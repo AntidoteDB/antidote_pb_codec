@@ -25,13 +25,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([encode/2,
-  decode/2,
-  decode_response/1, encode_read_objects/2, decode_bound_object/1, encode_update_objects/2, decode_update_op/1, encode_msg/1, decode_msg/2, encode_start_transaction/2, encode_txn_properties/1, encode_abort_transaction/1, encode_commit_transaction/1, encode_update_op/3, encode_static_update_objects/3, encode_bound_object/3, encode_type/1, encode_static_read_objects/3, encode_start_transaction_response/1, encode_operation_response/1, encode_commit_response/1, encode_read_objects_response/1, encode_read_object_resp/1, encode_static_read_objects_response/2, encode_error_code/1, decode_txn_properties/1, decode_type/1, decode_error_code/1, encode_error_resp/2, decode_error_resp/1, encode_message/1,
-  decode_message/1, encode_create_dc/1, decode_create_dc/1, encode_get_connection_descriptor/0, decode_get_connection_descriptor/1,
-  encode_get_connection_descriptor_resp/1, decode_get_connection_descriptor_resp/1,
-  encode_connect_to_dcs/1, decode_connect_to_dcs/1
-  ]).
+-export([decode/2, encode/1]).
 
 -define(TYPE_COUNTER, counter).
 -define(TYPE_SET, set).
@@ -39,8 +33,6 @@
 
 -define(ASSERT_BINARY(X), case is_binary(X) of true -> ok; false -> throw({not_binary, X}) end).
 -define(ASSERT_ALL_BINARY(Xs), [?ASSERT_BINARY(X) || X <- Xs]).
-
-% encoding on wire (used to be decode_msg and encode_msg)
 
 % these are all top-level messages which can be sent on the wire
 -export_type([sendable/0, request/0, response/0, message/0, update/0, read_result/0]).
@@ -85,13 +77,13 @@
 | {static_read_objects, {Clock :: binary(), Properties :: list(), Objects :: [bound_object()]}}
 | {read_objects, {Objects :: [bound_object()], TxId :: binary()}}
 | {create_dc, NodeNames :: [node()]}
-| {get_connection_descriptor, Descriptor :: binary()}
-| {connect_to_dcs, Desriptors :: [binary()]}.
+| get_connection_descriptor
+| {connect_to_dcs, Descriptors :: [binary()]}.
 
 -type response() ::
   {error_response, {ErrorCode :: error_code(), Message :: binary()}}
 | {start_transaction_response, {ok, TxId :: binary()}}
-| {commit_response, {ok, CommitTime :: any()}| {error, Reason :: error_code()}}
+| {commit_response, {ok, CommitTime :: binary()}| {error, Reason :: error_code()}}
 | {static_read_objects_response, {ok, Results :: [{bound_object(), read_result()}], CommitTime :: binary()}}
 | {read_objects_response, Resp :: [{bound_object(), read_result()}]}
 | {operation_response, ok | {error, Reason :: error_code()}}
@@ -156,12 +148,18 @@ message_code_to_type(130) -> 'ApbConnectToDCs';
 message_code_to_type(131) -> 'ApbGetConnectionDescriptor';
 message_code_to_type(132) -> 'ApbGetConnectionDescriptorResp'.
 
+-spec encode(message()) -> iolist().
+encode(Msg) ->
+    encode_msg(encode_message(Msg)).
+
+-spec decode(integer(), binary()) -> message().
+decode(Code, Msg) ->
+    decode_message(decode_msg(Code, Msg)).
 
 -spec encode_msg(sendable()) -> iolist().
 encode_msg(Msg) ->
   MsgType = element(1, Msg),
   [message_type_to_code(MsgType), [antidote_pb:encode_msg(Msg)]].
-
 
 -spec decode_msg(integer(), binary()) -> sendable().
 decode_msg(Code, Msg) ->
@@ -195,7 +193,7 @@ encode_message({read_objects_response, Resp}) ->
   encode_read_objects_response(Resp);
 encode_message({operation_response, Resp}) ->
   encode_operation_response(Resp);
-encode_message({get_connection_descriptor}) ->
+encode_message(get_connection_descriptor) ->
   encode_get_connection_descriptor();
 encode_message({get_connection_descriptor_resp, Resp}) ->
   encode_get_connection_descriptor_resp(Resp);
@@ -208,11 +206,11 @@ encode_message({connect_to_dcs, Descriptors}) ->
 decode_message(#'ApbStartTransaction'{properties = Properties, timestamp = Clock}) ->
   {start_transaction, {Clock, decode_txn_properties(Properties)}};
 decode_message(#'ApbAbortTransaction'{transaction_descriptor = TxId}) ->
-  {abort_transaction, binary_to_term(TxId)};
+  {abort_transaction, TxId};
 decode_message(#'ApbCommitTransaction'{transaction_descriptor = TxId}) ->
-  {commit_transaction, binary_to_term(TxId)};
+  {commit_transaction, TxId};
 decode_message(#'ApbUpdateObjects'{updates = Updates, transaction_descriptor = TxId}) ->
-  {update_objects, {[decode_update_op(U) || U <- Updates], binary_to_term(TxId)}};
+  {update_objects, {[decode_update_op(U) || U <- Updates], TxId}};
 decode_message(#'ApbStaticUpdateObjects'{updates = Updates, transaction = Tx}) ->
   Clock = Tx#'ApbStartTransaction'.timestamp,
   Properties = decode_txn_properties(Tx#'ApbStartTransaction'.properties),
@@ -222,31 +220,30 @@ decode_message(#'ApbStaticReadObjects'{objects = Objects, transaction = Tx}) ->
   Properties = decode_txn_properties(Tx#'ApbStartTransaction'.properties),
   {static_read_objects, {Clock, Properties, [decode_bound_object(O) || O <- Objects]}};
 decode_message(#'ApbReadObjects'{boundobjects = Objects, transaction_descriptor = TxId}) ->
-  {read_objects, {[decode_bound_object(O) || O <- Objects], binary_to_term(TxId)}};
+  {read_objects, {[decode_bound_object(O) || O <- Objects], TxId}};
 
 decode_message(#'ApbCreateDC'{nodes = Nodes}) ->
   {create_dc, [binary_to_atom(N, utf8) || N <- Nodes]};
 decode_message(#'ApbGetConnectionDescriptor'{}) ->
-  {get_connection_descriptor};
-decode_message(#'ApbGetConnectionDescriptorResp'{success = false, errorcode = E}) ->
+  get_connection_descriptor;
+decode_message(#'ApbGetConnectionDescriptorResp'{success = false, descriptor = _D, errorcode = E}) ->
   {get_connection_descriptor_resp, {error, decode_error_code(E)}};
-decode_message(#'ApbGetConnectionDescriptorResp'{descriptor = Descriptor}) ->
+decode_message(#'ApbGetConnectionDescriptorResp'{success = true, descriptor = Descriptor, errorcode = _E}) ->
   {get_connection_descriptor_resp, {ok, Descriptor}};
 decode_message(#'ApbConnectToDCs'{descriptors = Descriptors}) ->
-  {connect_to_dcs, [binary_to_term(D) || D <- Descriptors]};
-
+  {connect_to_dcs, Descriptors};
 
 decode_message(#'ApbErrorResp'{errcode = ErrorCode, errmsg = Message}) ->
   {error_response, {decode_error_code(ErrorCode), Message}};
 decode_message(#'ApbStartTransactionResp'{success = Success, transaction_descriptor = TxId, errorcode = ErrorCode}) ->
   Resp = case Success of
-    true -> {ok, binary_to_term(TxId)};
+    true -> {ok, TxId};
     false -> {error, decode_error_code(ErrorCode)}
   end,
   {start_transaction_response, Resp};
 decode_message(#'ApbCommitResp'{success = Success, errorcode = ErrorCode, commit_time = Time}) ->
   Resp = case Success of
-    true -> {ok, binary_to_term(Time)};
+    true -> {ok, Time};
     false -> {error, decode_error_code(ErrorCode)}
   end,
   {commit_response, Resp};
@@ -254,98 +251,22 @@ decode_message(#'ApbStaticReadObjectsResp'{
     objects = #'ApbReadObjectsResp'{objects = Objects},
     committime = #'ApbCommitResp'{commit_time = Time}}) ->
   Results = [decode_read_object_resp(O) || O <- Objects],
-  {static_read_objects_response, {ok, Results, binary_to_term(Time)}};
+  {static_read_objects_response, {ok, Results, Time}};
 decode_message(#'ApbReadObjectsResp'{success = Success, errorcode = ErrorCode, objects = Objects}) ->
   case Success of
     true ->
       Resp = [decode_read_object_resp(O) || O <- Objects],
       {read_objects_response, Resp};
     false ->
-      {error, decode_error_code(ErrorCode)}
+      {read_objects_response, {error, decode_error_code(ErrorCode)}}
   end;
 decode_message(#'ApbOperationResp'{success = S, errorcode = E}) ->
   case S of
     true ->
-      ok;
+      {operation_response, ok};
     false ->
-      {error, decode_error_code(E)}
+      {operation_response, {error, decode_error_code(E)}}
   end.
-
-
-% general encode function
-encode(start_transaction, {Clock, Properties}) ->
-  encode_start_transaction(Clock, Properties);
-encode(txn_properties, Props) ->
-  encode_txn_properties(Props);
-encode(abort_transaction, TxId) ->
-  encode_abort_transaction(TxId);
-encode(commit_transaction, TxId) ->
-  encode_commit_transaction(TxId);
-encode(update_objects, {Updates, TxId}) ->
-  encode_update_objects(Updates, TxId);
-encode(update_op, {Object, Op, Param}) ->
-  encode_update_op(Object, Op, Param);
-encode(static_update_objects, {Clock, Properties, Updates}) ->
-  encode_static_update_objects(Clock, Properties, Updates);
-encode(bound_object, {Key, Type, Bucket}) ->
-  encode_bound_object(Key, Type, Bucket);
-encode(type, Type) ->
-  encode_type(Type);
-encode(reg_update, Update) ->
-  encode_reg_update(Update);
-encode(counter_update, Update) ->
-  encode_counter_update(Update);
-encode(set_update, Update) ->
-  encode_set_update(Update);
-encode(read_objects, {Objects, TxId}) ->
-  encode_read_objects(Objects, TxId);
-encode(static_read_objects, {Clock, Properties, Objects}) ->
-  encode_static_read_objects(Clock, Properties, Objects);
-encode(start_transaction_response, Resp) ->
-  encode_start_transaction_response(Resp);
-encode(operation_response, Resp) ->
-  encode_operation_response(Resp);
-encode(commit_response, Resp) ->
-  encode_commit_response(Resp);
-encode(read_objects_response, Resp) ->
-  encode_read_objects_response(Resp);
-encode(read_object_resp, Resp) ->
-  encode_read_object_resp(Resp);
-encode(static_read_objects_response, {ok, Results, CommitTime}) ->
-  encode_static_read_objects_response(Results, CommitTime);
-encode(create_DC, Nodes) ->
-  encode_create_dc(Nodes);
-encode(get_connection_descriptor, {}) ->
-  encode_get_connection_descriptor();
-encode(get_connection_descriptor_resp, Resp) ->
-  encode_get_connection_descriptor_resp(Resp);
-encode(connect_to_DCs, {Descriptors}) ->
-  encode_connect_to_dcs(Descriptors);
-encode(error_code, Code) ->
-  encode_error_code(Code);
-encode(_Other, _) ->
-  erlang:error("Incorrect operation/Not yet implemented").
-
-% general decode function
-decode(txn_properties, Properties) ->
-  decode_txn_properties(Properties);
-decode(bound_object, Obj) ->
-  decode_bound_object(Obj);
-decode(type, Type) ->
-  decode_type(Type);
-decode(error_code, Code) ->
-  decode_error_code(Code);
-decode(update_object, Obj) ->
-  decode_update_op(Obj);
-decode(reg_update, Update) ->
-  decode_reg_update(Update);
-decode(counter_update, Update) ->
-  decode_counter_update(Update);
-decode(set_update, Update) ->
-  decode_set_update(Update);
-decode(_Other, _) ->
-  erlang:error("Unknown message").
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % error codes
@@ -361,10 +282,6 @@ decode_error_code(C) -> {error_code, C}.
 
 encode_error_resp(ErrorCode, Message) ->
   #'ApbErrorResp'{errcode = encode_error_code(ErrorCode), errmsg = Message}.
-
-decode_error_resp(#'ApbErrorResp'{errcode = ErrorCode, errmsg = Message}) ->
-  {decode_error_code(ErrorCode), Message}.
-
 
 %%%%%%%%%%%%%%%%%%%%%%%
 % Transactions
@@ -436,8 +353,6 @@ encode_update_op(Object, Op, Param) ->
   Operation = encode_update_operation(Type, {Op, Param}),
   #'ApbUpdateOp'{boundobject = EncObject, operation = Operation}.
 
-
-
 encode_update_objects(Updates, TxId) ->
   EncUpdates = lists:map(fun(Update) ->
     encode_update_op(Update) end,
@@ -466,7 +381,7 @@ encode_read_objects_response({ok, Results}) ->
 encode_start_transaction_response({error, Reason}) ->
   #'ApbStartTransactionResp'{success = false, errorcode = encode_error_code(Reason)};
 encode_start_transaction_response({ok, TxId}) ->
-  #'ApbStartTransactionResp'{success = true, transaction_descriptor = term_to_binary(TxId)}.
+  #'ApbStartTransactionResp'{success = true, transaction_descriptor = TxId}.
 
 encode_operation_response({error, Reason}) ->
   #'ApbOperationResp'{success = false, errorcode = encode_error_code(Reason)};
@@ -477,45 +392,10 @@ encode_commit_response({error, Reason}) ->
   #'ApbCommitResp'{success = false, errorcode = encode_error_code(Reason)};
 
 encode_commit_response({ok, CommitTime}) ->
-  #'ApbCommitResp'{success = true, commit_time = term_to_binary(CommitTime)}.
-
-decode_response(#'ApbOperationResp'{success = true}) ->
-  {opresponse, ok};
-decode_response(#'ApbOperationResp'{success = false, errorcode = Reason}) ->
-  {error, decode_error_code(Reason)};
-decode_response(#'ApbStartTransactionResp'{success = true,
-  transaction_descriptor                           = TxId}) ->
-  {start_transaction, TxId};
-decode_response(#'ApbStartTransactionResp'{success = false, errorcode = Reason}) ->
-  {error, decode_error_code(Reason)};
-decode_response(#'ApbCommitResp'{success = true, commit_time = TimeStamp}) ->
-  {commit_transaction, TimeStamp};
-decode_response(#'ApbCommitResp'{success = false, errorcode = Reason}) ->
-  {error, decode_error_code(Reason)};
-decode_response(#'ApbReadObjectsResp'{success = false, errorcode = Reason}) ->
-  {error, decode_error_code(Reason)};
-decode_response(#'ApbReadObjectsResp'{success = true, objects = Objects}) ->
-  Resps = lists:map(fun(O) ->
-    decode_response(O) end,
-    Objects),
-  {read_objects, Resps};
-decode_response(#'ApbReadObjectResp'{} = ReadObjectResp) ->
-  decode_read_object_resp(ReadObjectResp);
-decode_response(#'ApbStaticReadObjectsResp'{objects = Objects,
-  committime                                        = CommitTime}) ->
-  {read_objects, Values} = decode_response(Objects),
-  {commit_transaction, TimeStamp} = decode_response(CommitTime),
-  {static_read_objects_resp, Values, TimeStamp};
-decode_response(#'ApbGetConnectionDescriptorResp'{success = false, errorcode = E}) ->
-  {get_connection_descriptor_resp, {error, decode_error_code(E)}};
-decode_response(#'ApbGetConnectionDescriptorResp'{descriptor = Descriptor}) ->
-  {get_connection_descriptor_resp, {ok, Descriptor}};
-decode_response(Other) ->
-  erlang:error({"Unexpected message:", Other}).
+  #'ApbCommitResp'{success = true, commit_time = CommitTime}.
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% Reading objects
-
 
 encode_static_read_objects(Clock, Properties, Objects) ->
   EncTransaction = encode_start_transaction(Clock, Properties),
@@ -610,11 +490,6 @@ decode_update_operation(#'ApbUpdateOperation'{flagop = Op}) when Op /= undefined
   decode_flag_update(Op);
 decode_update_operation(#'ApbUpdateOperation'{resetop = #'ApbCrdtReset'{}}) ->
   {reset, {}}.
-
-%%decode_update_operation(#'Apbupdateoperation'{mapop = Op}) when Op /= undefined ->
-%%  decode_map_update(Op);
-%%decode_update_operation(#'Apbupdateoperation'{resetop = Op}) when Op /= undefined ->
-%%  decode_reset_update(Op).
 
 % general encoding of CRDT responses
 
@@ -805,13 +680,9 @@ encode_create_dc(Nodes) ->
       is_binary(N) -> N;
       true -> throw({invalid_node_value, N})
     end || N <- Nodes]}.
-decode_create_dc(#'ApbCreateDC'{nodes = Nodes}) ->
-    Nodes.
 
 encode_get_connection_descriptor() ->
     #'ApbGetConnectionDescriptor'{}.
-decode_get_connection_descriptor(#'ApbGetConnectionDescriptor'{}) ->
-    ok.
 
 encode_get_connection_descriptor_resp({error, Reason}) ->
     #'ApbGetConnectionDescriptorResp'{
@@ -824,87 +695,49 @@ encode_get_connection_descriptor_resp({ok, Descriptor}) ->
         descriptor = Descriptor
     }.
 
-decode_get_connection_descriptor_resp(#'ApbGetConnectionDescriptorResp'{
-        success = Success,
-        descriptor = Descriptor,
-        errorcode = ErrorCode
-    }) ->
-    {Success, Descriptor, ErrorCode}.
 
 encode_connect_to_dcs(Descriptors) ->
     #'ApbConnectToDCs'{descriptors = Descriptors}.
-decode_connect_to_dcs(#'ApbConnectToDCs'{descriptors = Descriptors}) ->
-    Descriptors.
-
-
 
 -ifdef(TEST).
+
+check(Msg) ->
+  [MsgCode, MsgData] = antidote_pb_codec:encode(Msg),
+  Result = decode(MsgCode, list_to_binary(MsgData)),
+  ?assertEqual(Result, Msg).
 
 %% Tests encode and decode
 start_transaction_test() ->
   Clock = term_to_binary(ignore),
   Properties = [],
-  EncRecord = antidote_pb_codec:encode(start_transaction,
-    {Clock, Properties}),
-  [MsgCode, MsgData] = encode_msg(EncRecord),
-  Msg = decode_msg(MsgCode, list_to_binary(MsgData)),
-  ?assertMatch(true, is_record(Msg, 'ApbStartTransaction')),
-  ?assertMatch(ignore, binary_to_term(Msg#'ApbStartTransaction'.timestamp)),
-  ?assertMatch(Properties,
-    antidote_pb_codec:decode(txn_properties,
-      Msg#'ApbStartTransaction'.properties)).
+  check({start_transaction, {Clock, Properties}}).
 
 commit_transaction_test() ->
-  TxId = <<"opaque_binary">>,
-  EncRecord = antidote_pb_codec:encode(commit_transaction, TxId),
-  [MsgCode, MsgData] = encode_msg(EncRecord),
-  Msg = decode_msg(MsgCode, list_to_binary(MsgData)),
-  ?assertMatch(true, is_record(Msg, 'ApbCommitTransaction')),
-
-  CommitTime = list_to_binary("committime_binary"),
-  EncResp = encode_commit_response({ok, CommitTime}),
-  [MsgCodeResp, MsgDataResp] = encode_msg(EncResp),
-  MsgResp = decode_msg(MsgCodeResp, list_to_binary(MsgDataResp)),
-  ?assertMatch(true, is_record(MsgResp, 'ApbCommitResp')).
+  check({commit_transaction, <<"opaque_binary">>}),
+  check({commit_response, {ok, <<"opaque_binary">>}}).
 
 abort_transaction_test() ->
-  TxId = <<"opaque_binary">>,
-  EncRecord = antidote_pb_codec:encode(abort_transaction, TxId),
-  [MsgCode, MsgData] = encode_msg(EncRecord),
-  Msg = decode_msg(MsgCode, list_to_binary(MsgData)),
-  ?assertMatch(true, is_record(Msg, 'ApbAbortTransaction')).
+  check({abort_transaction, <<"opaque_binary">>}).
 
 read_transaction_test() ->
   Objects = [{<<"key1">>, antidote_crdt_counter_pn, <<"bucket1">>},
     {<<"key2">>, antidote_crdt_set_aw, <<"bucket2">>}],
+
   TxId = term_to_binary({12}),
   %% Dummy value, structure of TxId is opaque to client
-  EncRecord = antidote_pb_codec:encode_read_objects(Objects, TxId),
-  ?assertMatch(true, is_record(EncRecord, 'ApbReadObjects')),
-  [MsgCode, MsgData] = encode_msg(EncRecord),
-  Msg = decode_msg(MsgCode, list_to_binary(MsgData)),
-  ?assertMatch(true, is_record(Msg, 'ApbReadObjects')),
-  DecObjects = lists:map(fun(O) ->
-    antidote_pb_codec:decode_bound_object(O) end,
-    Msg#'ApbReadObjects'.boundobjects),
-  ?assertMatch(Objects, DecObjects),
+  check({read_objects, {Objects, TxId}}),
+
   %% Test encoding error
-  ErrEnc = antidote_pb_codec:encode(read_objects_response,
-    {error, someerror}),
-  [ErrMsgCode, ErrMsgData] = encode_msg(ErrEnc),
-  ErrMsg = decode_msg(ErrMsgCode, list_to_binary(ErrMsgData)),
-  ?assertMatch({error, unknown},
-    antidote_pb_codec:decode_response(ErrMsg)),
+  check({read_objects_response, {error, unknown}}),
 
   %% Test encoding results
-  Results = [1, [<<"a">>, <<"b">>]],
-  ResEnc = antidote_pb_codec:encode(read_objects_response,
-    {ok, lists:zip(Objects, Results)}
-  ),
-  [ResMsgCode, ResMsgData] = encode_msg(ResEnc),
-  ResMsg = decode_msg(ResMsgCode, list_to_binary(ResMsgData)),
-  ?assertMatch({read_objects, [{counter, 1}, {set, [<<"a">>, <<"b">>]}]},
-    antidote_pb_codec:decode_response(ResMsg)).
+  Expected = [{counter, 1}, {set, [<<"a">>, <<"b">>]}],
+  Values = [1, [<<"a">>, <<"b">>]],
+  Msg = {read_objects_response, {ok, lists:zip(Objects, Values)}},
+  [MsgCode, MsgData] = antidote_pb_codec:encode(Msg),
+  Result = decode(MsgCode, list_to_binary(MsgData)),
+  ?assertEqual({read_objects_response, Expected}, Result).
+
 
 update_types_test() ->
   Updates = [{{<<"1">>, antidote_crdt_counter_pn, <<"2">>}, increment, 1},
@@ -916,37 +749,24 @@ update_types_test() ->
   ],
   TxId = term_to_binary({12}),
   %% Dummy value, structure of TxId is opaque to client
-  EncRecord = antidote_pb_codec:encode_update_objects(Updates, TxId),
-  ?assertMatch(true, is_record(EncRecord, 'ApbUpdateObjects')),
-  [MsgCode, MsgData] = encode_msg(EncRecord),
-  Msg = decode_msg(MsgCode, list_to_binary(MsgData)),
-  ?assertMatch(true, is_record(Msg, 'ApbUpdateObjects')),
-  DecUpdates = lists:map(fun(O) ->
-    antidote_pb_codec:decode_update_op(O) end,
-    Msg#'ApbUpdateObjects'.updates),
-  ?assertMatch(Updates, DecUpdates).
+  check({update_objects, {Updates, TxId}}).
 
 error_messages_test() ->
-  EncRecord1 = antidote_pb_codec:encode(start_transaction_response,
-    {error, someerror}),
-  [MsgCode1, MsgData1] = encode_msg(EncRecord1),
-  Msg1 = decode_msg(MsgCode1, list_to_binary(MsgData1)),
-  Resp1 = antidote_pb_codec:decode_response(Msg1),
-  ?assertMatch(Resp1, {error, unknown}),
+  check({start_transaction_response, {error, unknown}}),
+  check({operation_response, {error, unknown}}),
+  check({read_objects_response, {error, unknown}}).
 
-  EncRecord2 = antidote_pb_codec:encode(operation_response,
-    {error, someerror}),
-  [MsgCode2, MsgData2] = encode_msg(EncRecord2),
-  Msg2 = decode_msg(MsgCode2, list_to_binary(MsgData2)),
-  Resp2 = antidote_pb_codec:decode_response(Msg2),
-  ?assertMatch(Resp2, {error, unknown}),
+dc_management_test() ->
+    Nodes = [antidote@host1, antidote@host2],
+    check({create_dc, Nodes}),
+    check(get_connection_descriptor),
 
-  EncRecord3 = antidote_pb_codec:encode(read_objects_response,
-    {error, someerror}),
-  [MsgCode3, MsgData3] = encode_msg(EncRecord3),
-  Msg3 = decode_msg(MsgCode3, list_to_binary(MsgData3)),
-  Resp3 = antidote_pb_codec:decode_response(Msg3),
-  ?assertMatch(Resp3, {error, unknown}).
+    Descriptor = <<"some_opaque_binary_descriptor">>,
+    check({get_connection_descriptor_resp, {ok, Descriptor}}),
+
+    Descriptors = [<<"opaque_binary_descriptor1">>, <<"opaque_binary_descriptor2">>, <<"opaque_binary_descriptor3">>],
+    check({connect_to_dcs, Descriptors}),
+    ok.
 
 -define(TEST_CRDT_OP_CODEC(Type, Op, Param),
   ?assertEqual(
@@ -1027,34 +847,5 @@ crdt_encode_decode_test() ->
   ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, reset, {}),
 
   ok.
-
-dc_management_test() ->
-    Nodes = [<<"antidote@host1">>, <<"antidote@host2">>],
-    EncRecord = antidote_pb_codec:encode(create_DC, Nodes),
-    [MsgCode, MsgData] = encode_msg(EncRecord),
-    Msg = decode_msg(MsgCode, list_to_binary(MsgData)),
-    ?assertMatch(true, is_record(Msg, 'ApbCreateDC')),
-    ?assertMatch(Nodes, Msg#'ApbCreateDC'.nodes),
-
-    EncRecordDesc = antidote_pb_codec:encode(get_connection_descriptor, {}),
-    [MsgCodeDesc, MsgDataDesc] = encode_msg(EncRecordDesc),
-    MsgDesc = decode_msg(MsgCodeDesc, list_to_binary(MsgDataDesc)),
-    ?assertMatch(true, is_record(MsgDesc, 'ApbGetConnectionDescriptor')),
-
-    Descriptor = <<"some_opaque_binary_descriptor">>,
-    EncRecordDescResp = antidote_pb_codec:encode(get_connection_descriptor_resp, {ok, Descriptor}),
-    [MsgCodeDescResp, MsgDataDescResp] = encode_msg(EncRecordDescResp),
-    MsgDescResp = decode_msg(MsgCodeDescResp, list_to_binary(MsgDataDescResp)),
-    ?assertMatch(true, is_record(MsgDescResp, 'ApbGetConnectionDescriptorResp')),
-    ?assertMatch({true, Descriptor, _}, antidote_pb_codec:decode_get_connection_descriptor_resp(MsgDescResp)),
-
-    Descriptors = [<<"opaque_binary_descriptor1">>, <<"opaque_binary_descriptor2">>, <<"opaque_binary_descriptor3">>],
-    EncRecordConnect = antidote_pb_codec:encode(connect_to_DCs, {Descriptors}),
-    [MsgCodeConnect, MsgDataConnect] = encode_msg(EncRecordConnect),
-    MsgConnect = decode_msg(MsgCodeConnect, list_to_binary(MsgDataConnect)),
-    ?assertMatch(true, is_record(MsgConnect, 'ApbConnectToDCs')),
-    ?assertMatch(Descriptors, antidote_pb_codec:decode_connect_to_dcs(MsgConnect)),
-
-    ok.
 
 -endif.
