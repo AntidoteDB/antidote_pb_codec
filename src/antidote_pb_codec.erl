@@ -25,7 +25,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([decode/2, encode/1]).
+-export([decode/2, decode_response/1, encode/1]).
 
 -define(TYPE_COUNTER, counter).
 -define(TYPE_SET, set).
@@ -155,6 +155,12 @@ encode(Msg) ->
 -spec decode(integer(), binary()) -> message().
 decode(Code, Msg) ->
     decode_message(decode_msg(Code, Msg)).
+
+-spec decode_response(binary()) -> message().
+decode_response(Data) ->
+    <<MsgCode:8, MsgData/binary>> = Data,
+    decode(MsgCode, MsgData).
+
 
 -spec encode_msg(sendable()) -> iolist().
 encode_msg(Msg) ->
@@ -767,6 +773,37 @@ dc_management_test() ->
     Descriptors = [<<"opaque_binary_descriptor1">>, <<"opaque_binary_descriptor2">>, <<"opaque_binary_descriptor3">>],
     check({connect_to_dcs, Descriptors}),
     ok.
+
+-define(TestEncodeMsg(Msg),
+  ?assertEqual(
+    Msg,
+    decode_message(encode_message(Msg)))
+).
+
+message_encode_test() ->
+  % decoding an encoded message should result in the same message
+  Properties = [],
+  Tx = term_to_binary(my_tx),
+  ?TestEncodeMsg({start_transaction, {<<"Clock">>, Properties}}),
+  %?TestEncodeMsg({abort_transaction, Tx}),
+  %?TestEncodeMsg({commit_transaction, Tx}),
+  %?TestEncodeMsg({update_objects, {[{{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}, increment, 42}], Tx}}),
+  ?TestEncodeMsg({static_update_objects, {<<"Clock">>, Properties, [{{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}, increment, 42}]}}),
+  ?TestEncodeMsg({static_read_objects, {<<"Clock">>, Properties, [{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}]}}),
+  %?TestEncodeMsg({read_objects, {[{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}], Tx}}),
+  ?TestEncodeMsg({create_dc, ['a@example.com', 'b@example.com']}),
+  ?TestEncodeMsg(get_connection_descriptor),
+  ?TestEncodeMsg({connect_to_dcs, [<<"Descriptor1">>, <<"Descriptor2">>]}),
+  ?TestEncodeMsg({error_response, {timeout, <<"Message">>}}),
+  ?TestEncodeMsg({start_transaction_response, {ok, Tx}}),
+  ?TestEncodeMsg({commit_response, {ok, <<"commit_time">>}}),
+  ?TestEncodeMsg({commit_response, {error, timeout}}),
+  %?TestEncodeMsg({static_read_objects_response, {ok, [{counter, 42}], <<"commit_time">>}}),
+  %?TestEncodeMsg({read_objects_response, [{counter, 42}]}),
+  ?TestEncodeMsg({operation_response, ok}),
+  ?TestEncodeMsg({operation_response, {error, timeout}}),
+  ?TestEncodeMsg({get_connection_descriptor_resp, {ok, <<"Descriptor">>}}),
+  ?TestEncodeMsg({get_connection_descriptor_resp, {error, timeout}}).
 
 -define(TEST_CRDT_OP_CODEC(Type, Op, Param),
   ?assertEqual(
