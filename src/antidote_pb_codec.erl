@@ -90,11 +90,10 @@
 | get_connection_descriptor
 | {connect_to_dcs, Descriptors :: [binary()]}.
 
-%% TODO Response_in vs response_out
 -type response_out() ::
   {error_response, {ErrorCode :: error_code(), Message :: binary()}}
-| {start_transaction_response, {ok, TxId :: binary()}}
-| {commit_response, {ok, CommitTime :: binary()}| {error, Reason :: error_code()}}
+| {start_transaction_response, {ok, TxId :: binary()} | {error, Reason :: error_code()}}
+| {commit_response, {ok, CommitTime :: binary()} | {error, Reason :: error_code()}}
 | {static_read_objects_response, {Results :: [read_result()], CommitTime :: binary()}}
 | {read_objects_response, {ok, Resp :: [read_result()]} | {error, Reason :: error_code()}}
 | {operation_response, ok | {error, Reason :: error_code()}}
@@ -562,6 +561,8 @@ encode_crdt_type(antidote_crdt_flag_dw) ->
 
 encode_read_object_resp(reg, Val) ->
   #'ApbReadObjectResp'{reg = #'ApbGetRegResp'{value = Val}};
+encode_read_object_resp(mvreg, Val) ->
+  #'ApbReadObjectResp'{mvreg = #'ApbGetMVRegResp'{values = Val}};
 encode_read_object_resp(counter, Val) ->
   #'ApbReadObjectResp'{counter = #'ApbGetCounterResp'{value = Val}};
 encode_read_object_resp(set, Val) ->
@@ -754,14 +755,6 @@ encode_connect_to_dcs(Descriptors) ->
 
 -ifdef(TEST).
 
-% check(Input, Output) ->
-%   [MsgCode, MsgData] = encode_response(Input),
-%   Result = decode(MsgCode, list_to_binary(MsgData)),
-%   ?assertEqual(Output, Result).
-
-% check(Input) ->
-%   check(Input, Input).
-
 check_response(Input, Output) ->
   Data = encode_response(Input),
   Result = decode_response(iolist_to_binary(Data)),
@@ -801,19 +794,20 @@ read_test() ->
   Map = [{<<"key1">>, antidote_crdt_map_rr, <<"bucket1">>}],
   check_request({read_objects, Map, <<"opaque_binary">>}),
 
-  InMap = [{{<<"key1">>, antidote_crdt_map_rr, <<"bucket1">>},[{{<<"mapkey1">>, antidote_crdt_counter_pn}, 7}]}],
-  OutMap = [{map,[{{<<"mapkey1">>, antidote_crdt_counter_pn}, 7}]}],
+  InMap = [{{<<"key1">>, antidote_crdt_map_rr, <<"bucket1">>}, [{{<<"mapkey1">>, antidote_crdt_counter_pn}, 7}]}],
+  OutMap = [{map, [{{<<"mapkey1">>, antidote_crdt_counter_pn}, 7}]}],
 
   InputMap = {read_objects_response, {ok, InMap}},
   OutputMap = {read_objects_response, {ok, OutMap}},
   check_response(InputMap, OutputMap),
 
   In = [{{<<"key1">>, antidote_crdt_counter_pn, <<"bucket1">>}, 1},
-         {{<<"key2">>, antidote_crdt_set_aw, <<"bucket2">>},[<<"a">>, <<"b">>]},
+         {{<<"key2">>, antidote_crdt_set_aw, <<"bucket2">>}, [<<"a">>, <<"b">>]},
          {{<<"key3">>, antidote_crdt_flag_dw, <<"bucket3">>}, true},
-         {{<<"key4">>, antidote_crdt_register_lww, <<"bucket4">>}, <<"c">>}
+         {{<<"key4">>, antidote_crdt_register_lww, <<"bucket4">>}, <<"c">>},
+         {{<<"key4">>, antidote_crdt_register_mv, <<"bucket4">>}, [<<"d">>, <<"e">>]}
          ],
-  Out = [{counter, 1}, {set, [<<"a">>,<<"b">>]}, {flag, true}, {reg, <<"c">>}],
+  Out = [{counter, 1}, {set, [<<"a">>, <<"b">>]}, {flag, true}, {reg, <<"c">>}, {mvreg, [<<"d">>, <<"e">>]}],
   Input = {read_objects_response, {ok, In}},
   Output = {read_objects_response, {ok, Out}},
   check_response(Input, Output),
@@ -845,7 +839,7 @@ update_test() ->
     {update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, increment, 1}], <<"opaque_binary">>}),
 
   check_request({update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, reset, {}}], <<"opaque_binary">>},
-    {update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>},reset, {}}], <<"opaque_binary">>}),
+    {update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, reset, {}}], <<"opaque_binary">>}),
 
   MapUpdates = [
      {{<<"M">>, antidote_crdt_map_go, <<"B">>}, update, [{{<<"A">>, antidote_crdt_counter_pn}, {increment, 5}}, {{<<"B">>, antidote_crdt_counter_pn}, {increment, 5}}]},
