@@ -323,10 +323,12 @@ decode_message(#'ApbOperationResp'{success = S, errorcode = E}) ->
 
 encode_error_code(unknown) -> 0;
 encode_error_code(timeout) -> 1;
+encode_error_code(no_permissions) -> 2;
 encode_error_code({error_code, X})  -> X.
 
 decode_error_code(0) -> unknown;
 decode_error_code(1) -> timeout;
+decode_error_code(2) -> no_permissions;
 decode_error_code(X) -> {error_code, X}.
 
 
@@ -471,6 +473,7 @@ encode_read_objects(Objects, TxId) ->
 
 encode_type(antidote_crdt_counter_pn)   -> 'COUNTER';
 encode_type(antidote_crdt_counter_fat)  -> 'FATCOUNTER';
+encode_type(antidote_crdt_counter_b)    -> 'BCOUNTER';
 encode_type(antidote_crdt_set_aw)       -> 'ORSET';
 encode_type(antidote_crdt_set_rw)       -> 'RWSET';
 encode_type(antidote_crdt_register_lww) -> 'LWWREG';
@@ -484,6 +487,7 @@ encode_type(T)                          -> erlang:error({unknown_crdt_type, T}).
 
 decode_type('COUNTER')    -> antidote_crdt_counter_pn;
 decode_type('FATCOUNTER') -> antidote_crdt_counter_fat;
+decode_type('BCOUNTER')   -> antidote_crdt_counter_b;
 decode_type('ORSET')      -> antidote_crdt_set_aw;
 decode_type('LWWREG')     -> antidote_crdt_register_lww;
 decode_type('MVREG')      -> antidote_crdt_register_mv;
@@ -504,6 +508,8 @@ encode_update_operation(_Type, {reset, {}}) ->
 encode_update_operation(antidote_crdt_counter_pn, Op_Param) ->
   #'ApbUpdateOperation'{counterop = encode_counter_update(Op_Param)};
 encode_update_operation(antidote_crdt_counter_fat, Op_Param) ->
+  #'ApbUpdateOperation'{counterop = encode_counter_update(Op_Param)};
+encode_update_operation(antidote_crdt_counter_b, Op_Param) ->
   #'ApbUpdateOperation'{counterop = encode_counter_update(Op_Param)};
 encode_update_operation(antidote_crdt_set_aw, Op_Param) ->
   #'ApbUpdateOperation'{setop = encode_set_update(Op_Param)};
