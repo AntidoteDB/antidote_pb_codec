@@ -27,9 +27,6 @@
 
 -export([decode/2, decode_response/1, encode/1, encode_response/1]).
 
--define(TYPE_COUNTER, counter).
--define(TYPE_SET, set).
-
 
 -define(ASSERT_BINARY(X), case is_binary(X) of true -> ok; false -> throw({not_binary, X}) end).
 -define(ASSERT_ALL_BINARY(Xs), [?ASSERT_BINARY(X) || X <- Xs]).
@@ -380,6 +377,7 @@ encode_update_objects(Updates, TxId) ->
 encode_start_transaction_response({error, Reason}) ->
   #'ApbStartTransactionResp'{success = false, errorcode = encode_error_code(Reason)};
 encode_start_transaction_response({ok, TxId}) ->
+  ?ASSERT_BINARY(TxId),
   #'ApbStartTransactionResp'{success = true, transaction_descriptor = TxId}.
 
 encode_operation_response({error, Reason}) ->
@@ -391,12 +389,14 @@ encode_commit_response({error, Reason}) ->
   #'ApbCommitResp'{success = false, errorcode = encode_error_code(Reason)};
 
 encode_commit_response({ok, CommitTime}) ->
+  ?ASSERT_BINARY(CommitTime),
   #'ApbCommitResp'{success = true, commit_time = CommitTime}.
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% Reading objects
 
 encode_static_read_objects_response({Results, CommitTime}) ->
+  ?ASSERT_BINARY(CommitTime),
   #'ApbStaticReadObjectsResp'{
     objects    =  encode_read_objects_response({ok, Results}),
     committime =  encode_commit_response({ok, CommitTime})}.
@@ -411,6 +411,7 @@ encode_read_objects_response({error, Reason}) ->
     errorcode = encode_error_code(Reason)}.
 
 encode_static_read_objects(Clock, Properties, Objects) ->
+  ?ASSERT_BINARY(Clock),
   EncTransaction = encode_start_transaction(Clock, Properties),
   EncObjects = lists:map(fun(Object) ->
     encode_bound_object(Object) end,
