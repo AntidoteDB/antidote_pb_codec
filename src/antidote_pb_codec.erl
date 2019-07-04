@@ -31,7 +31,7 @@
 -define(ASSERT_ALL_BINARY(Xs), [?ASSERT_BINARY(X) || X <- Xs]).
 
 % these are all top-level messages which can be sent on the wire
--export_type([request/0, response/0, update/0, read_result/0]).
+-export_type([request/0, response_in/0, response_out/0, update/0, read_result/0]).
 
 -type sendable() ::
   #'ApbErrorResp'{}
@@ -64,6 +64,20 @@
 | {map, [{{Key :: binary(), Type :: atom()}, Value :: read_result()}]}
 | {flag, boolean()}.
 
+-type read_result_in() ::
+  {antidote_crdt_counter_fat, integer()}
+| {antidote_crdt_counter_pn, integer()}
+| {antidote_crdt_set_aw, [binary()]}
+| {antidote_crdt_set_rw, [binary()]}
+| {antidote_crdt_register_lww, binary()}
+| {antidote_crdt_register_mv, [binary()]}
+| {antidote_crdt_map_go, [{{Key :: binary(), Type :: atom()}, Value :: read_result_in()}]}
+| {antidote_crdt_map_rr, [{{Key :: binary(), Type :: atom()}, Value :: read_result_in()}]}
+| {antidote_crdt_flag_dw, boolean()}
+| {antidote_crdt_flag_ew, boolean()}
+.
+
+
 -type request() ::
   {start_transaction, Clock :: binary(), Properties :: list()}
 | {abort_transaction, TxId :: binary()}
@@ -76,12 +90,22 @@
 | get_connection_descriptor
 | {connect_to_dcs, Descriptors :: [binary()]}.
 
--type response() ::
+%% TODO Response_in vs response_out
+-type response_out() ::
   {error_response, {ErrorCode :: error_code(), Message :: binary()}}
 | {start_transaction_response, {ok, TxId :: binary()}}
 | {commit_response, {ok, CommitTime :: binary()}| {error, Reason :: error_code()}}
-| {static_read_objects_response, {Results :: [{bound_object(), read_result()}], CommitTime :: binary()}}
-| {read_objects_response, {ok, Resp :: [{bound_object(), read_result()}]} | {error, Reason :: error_code()}}
+| {static_read_objects_response, {Results :: [read_result()], CommitTime :: binary()}}
+| {read_objects_response, {ok, Resp :: [read_result()]} | {error, Reason :: error_code()}}
+| {operation_response, ok | {error, Reason :: error_code()}}
+| {get_connection_descriptor_resp, {ok, Descriptor :: binary()} | {error, Reason :: error_code()}}.
+
+-type response_in() ::
+  {error_response, {ErrorCode :: error_code(), Message :: binary()}}
+| {start_transaction_response, {ok, TxId :: binary()}}
+| {commit_response, {ok, CommitTime :: binary()}| {error, Reason :: error_code()}}
+| {static_read_objects_response, {Results :: [read_result_in()], CommitTime :: binary()}}
+| {read_objects_response, {ok, Resp :: [read_result_in()]} | {error, Reason :: error_code()}}
 | {operation_response, ok | {error, Reason :: error_code()}}
 | {get_connection_descriptor_resp, {ok, Descriptor :: binary()} | {error, Reason :: error_code()}}.
 
@@ -91,7 +115,7 @@ decode_request(Data) ->
     <<MsgCode:8, MsgData/binary>> = Data,
     decode(MsgCode, MsgData).
 
--spec decode_response(binary()) -> response().
+-spec decode_response(binary()) -> response_out().
 decode_response(Data) ->
     <<MsgCode:8, MsgData/binary>> = Data,
     decode(MsgCode, MsgData).
@@ -100,7 +124,7 @@ decode_response(Data) ->
 encode_request(Data) ->
     encode(Data).
 
--spec encode_response(response()) -> iolist().
+-spec encode_response(response_in()) -> iolist().
 encode_response(Data) ->
     TransformReadResponse = case Data of
         {static_read_objects_response, {Results, CommitTime}} ->
@@ -112,9 +136,6 @@ encode_response(Data) ->
         _ -> Data
     end,
     encode(TransformReadResponse).
-
-
-
 
 -type message() :: term().
 
@@ -692,9 +713,10 @@ decode_map_get_resp(#'ApbGetMapResp'{entries = Entries}) ->
   [decode_map_entry(E) || E <- Entries].
 
 encode_map_entry({{Key, Type}, Val}) ->
+    Value = encode_read_object_resp(encode_crdt_type(Type), Val),
   #'ApbMapEntry'{
     key   = encode_map_key({Key, Type}),
-    value = encode_read_object_resp(Type, Val)
+    value = Value
   }.
 
 decode_map_entry(#'ApbMapEntry'{key = KeyEnc, value = ValueEnc}) ->
@@ -776,6 +798,15 @@ read_test() ->
   check_request({read_objects, Objects, <<"opaque_binary">>}),
   check_request({static_read_objects, <<"opaque_binary">>, [], Objects}),
 
+  Map = [{<<"key1">>, antidote_crdt_map_rr, <<"bucket1">>}],
+  check_request({read_objects, Map, <<"opaque_binary">>}),
+
+  InMap = [{{<<"key1">>, antidote_crdt_map_rr, <<"bucket1">>},[{{<<"mapkey1">>, antidote_crdt_counter_pn}, 7}]}],
+  OutMap = [{map,[{{<<"mapkey1">>, antidote_crdt_counter_pn}, 7}]}],
+
+  InputMap = {read_objects_response, {ok, InMap}},
+  OutputMap = {read_objects_response, {ok, OutMap}},
+  check_response(InputMap, OutputMap),
 
   In = [{{<<"key1">>, antidote_crdt_counter_pn, <<"bucket1">>}, 1},
          {{<<"key2">>, antidote_crdt_set_aw, <<"bucket2">>},[<<"a">>, <<"b">>]},
@@ -845,5 +876,85 @@ dc_management_test() ->
     Descriptors = [<<"opaque_binary_descriptor1">>, <<"opaque_binary_descriptor2">>, <<"opaque_binary_descriptor3">>],
     check_request({connect_to_dcs, Descriptors}),
     ok.
+
+-define(TEST_CRDT_OP_CODEC(Type, Op, Param),
+  ?assertEqual(
+    {{<<"key">>, Type, <<"bucket">>}, Op, Param},
+    decode_update_op(encode_update_op({<<"key">>, Type, <<"bucket">>}, Op, Param)))
+).
+
+% -define(TEST_CRDT_RESP_CODEC(Type, ExpectedType, Val),
+%   ?assertEqual(
+%     {ExpectedType, Val},
+%     decode_read_object_resp(encode_read_object_resp(Type, Val)))
+% ).
+
+% crdt_encode_decode_test() ->
+%   %% encoding the following operations and decoding them again, should give the same result
+
+%   % Counter
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_counter_pn, increment, 1),
+%   ?TEST_CRDT_RESP_CODEC(antidote_crdt_counter_pn, counter, 42),
+
+%   % lww-register
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_register_lww, assign, <<"hello">>),
+%   ?TEST_CRDT_RESP_CODEC(antidote_crdt_register_lww, reg, <<"blub">>),
+
+
+%   % mv-register
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_register_mv, assign, <<"hello">>),
+%   ?TEST_CRDT_RESP_CODEC(antidote_crdt_register_mv, mvreg, [<<"a">>, <<"b">>, <<"c">>]),
+
+%   % set
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_set_aw, add, <<"hello">>),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_set_aw, add_all, [<<"a">>, <<"b">>, <<"c">>]),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_set_aw, remove, <<"hello">>),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_set_aw, remove_all, [<<"a">>, <<"b">>, <<"c">>]),
+%   ?TEST_CRDT_RESP_CODEC(antidote_crdt_set_aw, set, [<<"a">>, <<"b">>, <<"c">>]),
+
+%   % same for remove wins set:
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_set_rw, add, <<"hello">>),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_set_rw, add_all, [<<"a">>, <<"b">>, <<"c">>]),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_set_rw, remove, <<"hello">>),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_set_rw, remove_all, [<<"a">>, <<"b">>, <<"c">>]),
+%   ?TEST_CRDT_RESP_CODEC(antidote_crdt_set_rw, set, [<<"a">>, <<"b">>, <<"c">>]),
+
+%   % map
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, update, {{<<"key">>, antidote_crdt_register_mv}, {assign, <<"42">>}}),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, update, [
+%     {{<<"a">>, antidote_crdt_register_mv}, {assign, <<"42">>}},
+%     {{<<"b">>, antidote_crdt_set_aw}, {add, <<"x">>}}]),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, remove, {<<"key">>, antidote_crdt_register_mv}),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, remove, [
+%     {<<"a">>, antidote_crdt_register_mv},
+%     {<<"b">>, antidote_crdt_register_mv}]),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, batch, {
+%     [{{<<"a">>, antidote_crdt_register_mv}, {assign, <<"42">>}},
+%       {{<<"b">>, antidote_crdt_set_aw}, {add, <<"x">>}}],
+%     [{<<"a">>, antidote_crdt_register_mv},
+%       {<<"b">>, antidote_crdt_register_mv}]}),
+
+%   ?TEST_CRDT_RESP_CODEC(antidote_crdt_map_rr, map, [
+%     {{<<"a">>, antidote_crdt_register_mv}, <<"42">>}
+%   ]),
+
+%   % gmap
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_map_go, update, {{<<"key">>, antidote_crdt_register_mv}, {assign, <<"42">>}}),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_map_go, update, [
+%     {{<<"a">>, antidote_crdt_register_mv}, {assign, <<"42">>}},
+%     {{<<"b">>, antidote_crdt_set_aw}, {add, <<"x">>}}]),
+%   ?TEST_CRDT_RESP_CODEC(antidote_crdt_map_go, map, [
+%     {{<<"a">>, antidote_crdt_register_mv}, <<"42">>}
+%   ]),
+
+%   % flag
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, enable, {}),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, disable, {}),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, reset, {}),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, enable, {}),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, disable, {}),
+%   ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, reset, {}),
+
+%   ok.
 
 -endif.
