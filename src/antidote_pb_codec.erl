@@ -25,14 +25,13 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([decode/2, decode_response/1, encode/1, encode_response/1]).
-
+-export([decode_request/1, decode_response/1, encode_request/1, encode_response/1]).
 
 -define(ASSERT_BINARY(X), case is_binary(X) of true -> ok; false -> throw({not_binary, X}) end).
 -define(ASSERT_ALL_BINARY(Xs), [?ASSERT_BINARY(X) || X <- Xs]).
 
 % these are all top-level messages which can be sent on the wire
--export_type([sendable/0, request/0, response/0, message/0, update/0, read_result/0]).
+-export_type([request/0, response/0, update/0, read_result/0]).
 
 -type sendable() ::
   #'ApbErrorResp'{}
@@ -66,13 +65,13 @@
 | {flag, boolean()}.
 
 -type request() ::
-  {start_transaction, {Clock :: binary(), Properties :: list()}}
+  {start_transaction, Clock :: binary(), Properties :: list()}
 | {abort_transaction, TxId :: binary()}
 | {commit_transaction, TxId :: binary()}
-| {update_objects, {Updates :: [update()], TxId :: binary()}}
-| {static_update_objects, {Clock :: binary(), Properties :: list(), Updates :: [update()]}}
-| {static_read_objects, {Clock :: binary(), Properties :: list(), Objects :: [bound_object()]}}
-| {read_objects, {Objects :: [bound_object()], TxId :: binary()}}
+| {update_objects, Updates :: [update()], TxId :: binary()}
+| {static_update_objects, Clock :: binary(), Properties :: list(), Updates :: [update()]}
+| {static_read_objects, Clock :: binary(), Properties :: list(), Objects :: [bound_object()]}
+| {read_objects, Objects :: [bound_object()], TxId :: binary()}
 | {create_dc, NodeNames :: [node()]}
 | get_connection_descriptor
 | {connect_to_dcs, Descriptors :: [binary()]}.
@@ -81,12 +80,43 @@
   {error_response, {ErrorCode :: error_code(), Message :: binary()}}
 | {start_transaction_response, {ok, TxId :: binary()}}
 | {commit_response, {ok, CommitTime :: binary()}| {error, Reason :: error_code()}}
-| {static_read_objects_response,{ok, Results :: [{bound_object(), read_result()}], CommitTime :: binary()}}
+| {static_read_objects_response, {Results :: [{bound_object(), read_result()}], CommitTime :: binary()}}
 | {read_objects_response, {ok, Resp :: [{bound_object(), read_result()}]} | {error, Reason :: error_code()}}
 | {operation_response, ok | {error, Reason :: error_code()}}
 | {get_connection_descriptor_resp, {ok, Descriptor :: binary()} | {error, Reason :: error_code()}}.
 
--type message() :: request() | response().
+
+-spec decode_request(binary()) -> request().
+decode_request(Data) ->
+    <<MsgCode:8, MsgData/binary>> = Data,
+    decode(MsgCode, MsgData).
+
+-spec decode_response(binary()) -> response().
+decode_response(Data) ->
+    <<MsgCode:8, MsgData/binary>> = Data,
+    decode(MsgCode, MsgData).
+
+-spec encode_request(request()) -> iolist().
+encode_request(Data) ->
+    encode(Data).
+
+-spec encode_response(response()) -> iolist().
+encode_response(Data) ->
+    TransformReadResponse = case Data of
+        {static_read_objects_response, {Results, CommitTime}} ->
+            TransformedResults = [ {encode_crdt_type(Type), Value} || {{_Key, Type, _Bucket}, Value} <- Results],
+            {static_read_objects_response, {TransformedResults, CommitTime}};
+        {read_objects_response, {ok, Results}} ->
+            TransformedResults = [ {encode_crdt_type(Type), Value} || {{_Key, Type, _Bucket}, Value} <- Results],
+            {read_objects_response, {ok, TransformedResults}};
+        _ -> Data
+    end,
+    encode(TransformReadResponse).
+
+
+
+
+-type message() :: term().
 
 
 message_type_to_code('ApbErrorResp')             -> 0;
@@ -145,34 +175,16 @@ message_code_to_type(130) -> 'ApbConnectToDCs';
 message_code_to_type(131) -> 'ApbGetConnectionDescriptor';
 message_code_to_type(132) -> 'ApbGetConnectionDescriptorResp'.
 
-%-spec encode(message()) -> iolist().
+-spec encode(message()) -> iolist().
 encode(Msg) ->
     X = encode_message(Msg),
     encode_msg(X).
-
--spec encode_response(response()) -> iolist().
-encode_response(Data) ->
-    TransformReadResponse = case Data of
-        {static_read_objects_response, {Results, CommitTime}} ->
-            TransformedResults = [ {encode_crdt_type(Type), Value} || {{_Key, Type, _Bucket}, Value} <- Results],
-            {static_read_objects_response, {TransformedResults, CommitTime}};
-        {read_objects_response, {ok, Results}} ->
-            TransformedResults = [ {encode_crdt_type(Type), Value} || {{_Key, Type, _Bucket}, Value} <- Results],
-            {read_objects_response, {ok, TransformedResults}};
-        _ -> Data
-    end,
-    encode(TransformReadResponse).
 
 
 
 -spec decode(integer(), binary()) -> any().
 decode(Code, Msg) ->
     decode_message(decode_msg(Code, Msg)).
-
--spec decode_response(binary()) -> any().
-decode_response(Data) ->
-    <<MsgCode:8, MsgData/binary>> = Data,
-    decode(MsgCode, MsgData).
 
 -spec encode_msg(sendable()) -> iolist().
 encode_msg(Msg) ->
@@ -185,19 +197,19 @@ decode_msg(Code, Msg) ->
   antidote_pb:decode_msg(Msg, MsgType).
 
 -spec encode_message(message()) -> sendable().
-encode_message({start_transaction, {Clock, Properties}}) ->
+encode_message({start_transaction, Clock, Properties}) ->
   encode_start_transaction(Clock, Properties);
 encode_message({abort_transaction, TxId}) ->
   encode_abort_transaction(TxId);
 encode_message({commit_transaction, TxId}) ->
   encode_commit_transaction(TxId);
-encode_message({update_objects, {Updates, TxId}}) ->
+encode_message({update_objects, Updates, TxId}) ->
   encode_update_objects(Updates, TxId);
-encode_message({static_update_objects, {Clock, Properties, Updates}}) ->
+encode_message({static_update_objects, Clock, Properties, Updates}) ->
   encode_static_update_objects(Clock, Properties, Updates);
-encode_message({static_read_objects, {Clock, Properties, Objects}}) ->
+encode_message({static_read_objects, Clock, Properties, Objects}) ->
   encode_static_read_objects(Clock, Properties, Objects);
-encode_message({read_objects, {Objects, TxId}}) ->
+encode_message({read_objects, Objects, TxId}) ->
   encode_read_objects(Objects, TxId);
 encode_message({error_response, {ErrorCode, Message}}) ->
   encode_error_resp(ErrorCode, Message);
@@ -222,23 +234,23 @@ encode_message({connect_to_dcs, Descriptors}) ->
 
 -spec decode_message(sendable()) -> message().
 decode_message(#'ApbStartTransaction'{properties = Properties, timestamp = Clock}) ->
-  {start_transaction, {Clock, decode_txn_properties(Properties)}};
+  {start_transaction, Clock, decode_txn_properties(Properties)};
 decode_message(#'ApbAbortTransaction'{transaction_descriptor = TxId}) ->
   {abort_transaction, TxId};
 decode_message(#'ApbCommitTransaction'{transaction_descriptor = TxId}) ->
   {commit_transaction, TxId};
 decode_message(#'ApbUpdateObjects'{updates = Updates, transaction_descriptor = TxId}) ->
-  {update_objects, {[decode_update_op(U) || U <- Updates], TxId}};
+  {update_objects, [decode_update_op(U) || U <- Updates], TxId};
 decode_message(#'ApbStaticUpdateObjects'{updates = Updates, transaction = Tx}) ->
   Clock = Tx#'ApbStartTransaction'.timestamp,
   Properties = decode_txn_properties(Tx#'ApbStartTransaction'.properties),
-  {static_update_objects, {Clock, Properties, [decode_update_op(U) || U <- Updates]}};
+  {static_update_objects, Clock, Properties, [decode_update_op(U) || U <- Updates]};
 decode_message(#'ApbStaticReadObjects'{objects = Objects, transaction = Tx}) ->
   Clock = Tx#'ApbStartTransaction'.timestamp,
   Properties = decode_txn_properties(Tx#'ApbStartTransaction'.properties),
-  {static_read_objects, {Clock, Properties, [decode_bound_object(O) || O <- Objects]}};
+  {static_read_objects, Clock, Properties, [decode_bound_object(O) || O <- Objects]};
 decode_message(#'ApbReadObjects'{boundobjects = Objects, transaction_descriptor = TxId}) ->
-  {read_objects, {[decode_bound_object(O) || O <- Objects], TxId}};
+  {read_objects, [decode_bound_object(O) || O <- Objects], TxId};
 
 decode_message(#'ApbCreateDC'{nodes = Nodes}) ->
   {create_dc, [binary_to_atom(N, utf8) || N <- Nodes]};
@@ -291,11 +303,11 @@ decode_message(#'ApbOperationResp'{success = S, errorcode = E}) ->
 
 encode_error_code(unknown) -> 0;
 encode_error_code(timeout) -> 1;
-encode_error_code(_Other)  -> 0.
+encode_error_code({error_code, X})  -> X.
 
 decode_error_code(0) -> unknown;
 decode_error_code(1) -> timeout;
-decode_error_code(C) -> {error_code, C}.
+decode_error_code(X) -> {error_code, X}.
 
 
 encode_error_resp(ErrorCode, Message) ->
@@ -720,31 +732,49 @@ encode_connect_to_dcs(Descriptors) ->
 
 -ifdef(TEST).
 
-check(Input, Output) ->
-  [MsgCode, MsgData] = encode_response(Input),
-  Result = decode(MsgCode, list_to_binary(MsgData)),
+% check(Input, Output) ->
+%   [MsgCode, MsgData] = encode_response(Input),
+%   Result = decode(MsgCode, list_to_binary(MsgData)),
+%   ?assertEqual(Output, Result).
+
+% check(Input) ->
+%   check(Input, Input).
+
+check_response(Input, Output) ->
+  Data = encode_response(Input),
+  Result = decode_response(iolist_to_binary(Data)),
   ?assertEqual(Output, Result).
 
-check(Input) ->
-  check(Input, Input).
+check_response(Input) ->
+  check_response(Input, Input).
+
+check_request(Input, Output) ->
+  Data = encode_request(Input),
+  Result = decode_request(iolist_to_binary(Data)),
+  ?assertEqual(Output, Result).
+
+check_request(Input) ->
+  check_request(Input, Input).
+
+
 
 %% Tests encode and decode
 start_test() ->
-  check({start_transaction, {<<"opaque_binary">>, []}}),
-  check({start_transaction_response, {ok, <<"opaque_binary">>}}).
+  check_request({start_transaction, <<"opaque_binary">>, []}),
+  check_response({start_transaction_response, {ok, <<"opaque_binary">>}}).
 
 commit_test() ->
-  check({commit_transaction, <<"opaque_binary">>}),
-  check({commit_response, {ok, <<"opaque_binary">>}}).
+  check_request({commit_transaction, <<"opaque_binary">>}),
+  check_response({commit_response, {ok, <<"opaque_binary">>}}).
 
 abort_test() ->
-  check({abort_transaction, <<"opaque_binary">>}).
+  check_request({abort_transaction, <<"opaque_binary">>}).
 
 read_test() ->
   Objects = [{<<"key1">>, antidote_crdt_counter_pn, <<"bucket1">>},
     {<<"key2">>, antidote_crdt_set_aw, <<"bucket2">>}],
-  check({read_objects, {Objects, <<"opaque_binary">>}}),
-  check({static_read_objects, {<<"opaque_binary">>, [], Objects}}),
+  check_request({read_objects, Objects, <<"opaque_binary">>}),
+  check_request({static_read_objects, <<"opaque_binary">>, [], Objects}),
 
 
   In = [{{<<"key1">>, antidote_crdt_counter_pn, <<"bucket1">>}, 1},
@@ -755,11 +785,11 @@ read_test() ->
   Out = [{counter, 1}, {set, [<<"a">>,<<"b">>]}, {flag, true}, {reg, <<"c">>}],
   Input = {read_objects_response, {ok, In}},
   Output = {read_objects_response, {ok, Out}},
-  check(Input, Output),
+  check_response(Input, Output),
 
   InputStatic = {static_read_objects_response, {In, <<"opaque_binary">>}},
   OutputStatic = {static_read_objects_response, {Out, <<"opaque_binary">>}},
-  check(InputStatic, OutputStatic).
+  check_response(InputStatic, OutputStatic).
 
 update_test() ->
   Updates = [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, increment, 1},
@@ -774,46 +804,46 @@ update_test() ->
     {{<<"K9">>, antidote_crdt_register_mv, <<"B">>}, assign, <<"World">>},
     {{<<"K6">>, antidote_crdt_flag_ew, <<"B">>}, disable, {}}
   ],
-  check({update_objects, {Updates, <<"opaque_binary">>}}),
-  check({static_update_objects, {<<"opaque_binary">>, [], Updates}}),
+  check_request({update_objects, Updates, <<"opaque_binary">>}),
+  check_request({static_update_objects, <<"opaque_binary">>, [], Updates}),
 
-  check({update_objects, {[{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, decrement, 10}], <<"opaque_binary">>}},
-    {update_objects, {[{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, increment, -10}], <<"opaque_binary">>}}),
+  check_request({update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, decrement, 10}], <<"opaque_binary">>},
+    {update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, increment, -10}], <<"opaque_binary">>}),
 
-  check({update_objects, {[{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, increment, undefined}], <<"opaque_binary">>}},
-    {update_objects, {[{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, increment, 1}], <<"opaque_binary">>}}),
+  check_request({update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, increment, undefined}], <<"opaque_binary">>},
+    {update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, increment, 1}], <<"opaque_binary">>}),
 
-  check({update_objects, {[{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, reset, {}}], <<"opaque_binary">>}},
-    {update_objects, {[{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>},reset, {}}], <<"opaque_binary">>}}),
+  check_request({update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>}, reset, {}}], <<"opaque_binary">>},
+    {update_objects, [{{<<"K1">>, antidote_crdt_counter_pn, <<"B">>},reset, {}}], <<"opaque_binary">>}),
 
   MapUpdates = [
      {{<<"M">>, antidote_crdt_map_go, <<"B">>}, update, [{{<<"A">>, antidote_crdt_counter_pn}, {increment, 5}}, {{<<"B">>, antidote_crdt_counter_pn}, {increment, 5}}]},
      {{<<"M">>, antidote_crdt_map_rr, <<"B">>}, remove, [{<<"A">>, antidote_crdt_counter_pn}, {<<"B">>, antidote_crdt_set_aw}]}
   ],
-  check({update_objects, {MapUpdates, <<"opaque_binary">>}}),
+  check_request({update_objects, MapUpdates, <<"opaque_binary">>}),
 
-  check({operation_response, ok}).
+  check_response({operation_response, ok}).
 
 error_messages_test() ->
-  check({start_transaction_response, {error, unknown}}),
-  check({commit_response, {error, unknown}}),
-  check({operation_response, {error, unknown}}),
-  check({read_objects_response, {error, unknown}}),
-  check({get_connection_descriptor_resp, {error, unknown}}),
-  check({error_response, {unknown, <<"Message">>}}),
-  check({error_response, {timeout, <<"Message">>}}),
-  check({error_response, {blah, <<"Blah">>}}, {error_response, {unknown, <<"Blah">>}}).
+  check_response({start_transaction_response, {error, unknown}}),
+  check_response({commit_response, {error, unknown}}),
+  check_response({operation_response, {error, unknown}}),
+  check_response({read_objects_response, {error, unknown}}),
+  check_response({get_connection_descriptor_resp, {error, unknown}}),
+  check_response({error_response, {unknown, <<"Message">>}}),
+  check_response({error_response, {timeout, <<"Message">>}}),
+  check_response({error_response, {{error_code, 123}, <<"Message">>}}, {error_response, {{error_code, 123}, <<"Message">>}}).
 
 dc_management_test() ->
     Nodes = [antidote@host1, antidote@host2],
-    check({create_dc, Nodes}),
-    check(get_connection_descriptor),
+    check_request({create_dc, Nodes}),
+    check_request(get_connection_descriptor),
 
     Descriptor = <<"some_opaque_binary_descriptor">>,
-    check({get_connection_descriptor_resp, {ok, Descriptor}}),
+    check_response({get_connection_descriptor_resp, {ok, Descriptor}}),
 
     Descriptors = [<<"opaque_binary_descriptor1">>, <<"opaque_binary_descriptor2">>, <<"opaque_binary_descriptor3">>],
-    check({connect_to_dcs, Descriptors}),
+    check_request({connect_to_dcs, Descriptors}),
     ok.
 
 -endif.
