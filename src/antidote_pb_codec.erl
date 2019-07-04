@@ -20,12 +20,12 @@
 -module(antidote_pb_codec).
 
 -include("antidote_pb.hrl").
-
+-include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([decode/2, decode_response/1, encode/1]).
+-export([decode/2, decode_response/1, encode/1, encode_response/1]).
 
 -define(TYPE_COUNTER, counter).
 -define(TYPE_SET, set).
@@ -84,8 +84,8 @@
   {error_response, {ErrorCode :: error_code(), Message :: binary()}}
 | {start_transaction_response, {ok, TxId :: binary()}}
 | {commit_response, {ok, CommitTime :: binary()}| {error, Reason :: error_code()}}
-| {static_read_objects_response, {ok, Results :: [{bound_object(), read_result()}], CommitTime :: binary()}}
-| {read_objects_response, Resp :: [{bound_object(), read_result()}]}
+| {static_read_objects_response,{ok, Results :: [{bound_object(), read_result()}], CommitTime :: binary()}}
+| {read_objects_response, {ok, Resp :: [{bound_object(), read_result()}]} | {error, Reason :: error_code()}}
 | {operation_response, ok | {error, Reason :: error_code()}}
 | {get_connection_descriptor_resp, {ok, Descriptor :: binary()} | {error, Reason :: error_code()}}.
 
@@ -148,19 +148,34 @@ message_code_to_type(130) -> 'ApbConnectToDCs';
 message_code_to_type(131) -> 'ApbGetConnectionDescriptor';
 message_code_to_type(132) -> 'ApbGetConnectionDescriptorResp'.
 
--spec encode(message()) -> iolist().
+%-spec encode(message()) -> iolist().
 encode(Msg) ->
-    encode_msg(encode_message(Msg)).
+    X = encode_message(Msg),
+    encode_msg(X).
 
--spec decode(integer(), binary()) -> message().
+-spec encode_response(response()) -> iolist().
+encode_response(Data) ->
+    TransformReadResponse = case Data of
+        {static_read_objects_response, {Results, CommitTime}} ->
+            TransformedResults = [ {encode_crdt_type(Type), Value} || {{_Key, Type, _Bucket}, Value} <- Results],
+            {static_read_objects_response, {ok, TransformedResults, CommitTime}};
+        {read_objects_response, {ok, Results}} ->
+            TransformedResults = [ {encode_crdt_type(Type), Value} || {{_Key, Type, _Bucket}, Value} <- Results],
+            {read_objects_response, {ok, TransformedResults}};
+        _ -> Data
+    end,
+    encode(TransformReadResponse).
+
+
+
+-spec decode(integer(), binary()) -> any().
 decode(Code, Msg) ->
     decode_message(decode_msg(Code, Msg)).
 
--spec decode_response(binary()) -> message().
+-spec decode_response(binary()) -> any().
 decode_response(Data) ->
     <<MsgCode:8, MsgData/binary>> = Data,
     decode(MsgCode, MsgData).
-
 
 -spec encode_msg(sendable()) -> iolist().
 encode_msg(Msg) ->
@@ -193,8 +208,8 @@ encode_message({start_transaction_response, Resp}) ->
   encode_start_transaction_response(Resp);
 encode_message({commit_response, Resp}) ->
   encode_commit_response(Resp);
-encode_message({static_read_objects_response, {ok, Results, CommitTime}}) ->
-  encode_static_read_objects_response(Results, CommitTime);
+encode_message({static_read_objects_response, Resp}) ->
+  encode_static_read_objects_response(Resp);
 encode_message({read_objects_response, Resp}) ->
   encode_read_objects_response(Resp);
 encode_message({operation_response, Resp}) ->
@@ -257,12 +272,12 @@ decode_message(#'ApbStaticReadObjectsResp'{
     objects = #'ApbReadObjectsResp'{objects = Objects},
     committime = #'ApbCommitResp'{commit_time = Time}}) ->
   Results = [decode_read_object_resp(O) || O <- Objects],
-  {static_read_objects_response, {ok, Results, Time}};
+  {static_read_objects_response, {Results, Time}};
 decode_message(#'ApbReadObjectsResp'{success = Success, errorcode = ErrorCode, objects = Objects}) ->
   case Success of
     true ->
       Resp = [decode_read_object_resp(O) || O <- Objects],
-      {read_objects_response, Resp};
+      {read_objects_response, {ok, Resp}};
     false ->
       {read_objects_response, {error, decode_error_code(ErrorCode)}}
   end;
@@ -369,21 +384,6 @@ encode_update_objects(Updates, TxId) ->
 %%%%%%%%%%%%%%%%%%%%%%%%
 %% Responses
 
-encode_static_read_objects_response(Results, CommitTime) ->
-  #'ApbStaticReadObjectsResp'{
-    objects    = encode_read_objects_response({ok, Results}),
-    committime = encode_commit_response({ok, CommitTime})}.
-
-
-encode_read_objects_response({error, Reason}) ->
-  #'ApbReadObjectsResp'{success = false, errorcode = encode_error_code(Reason)};
-encode_read_objects_response({ok, Results}) ->
-  EncResults = lists:map(fun(R) ->
-    encode_read_object_resp(R) end,
-    Results),
-  #'ApbReadObjectsResp'{success = true, objects = EncResults}.
-
-
 encode_start_transaction_response({error, Reason}) ->
   #'ApbStartTransactionResp'{success = false, errorcode = encode_error_code(Reason)};
 encode_start_transaction_response({ok, TxId}) ->
@@ -402,6 +402,16 @@ encode_commit_response({ok, CommitTime}) ->
 
 %%%%%%%%%%%%%%%%%%%%%%
 %% Reading objects
+
+encode_static_read_objects_response({Results, CommitTime}) ->
+  #'ApbStaticReadObjectsResp'{
+    objects    =  encode_read_objects_response({ok, Results}),
+    committime =  encode_commit_response({ok, CommitTime})}.
+
+encode_read_objects_response({ok, Results}) ->
+  #'ApbReadObjectsResp'{
+    success    = true,
+    objects    = [ encode_read_object_resp(Type, Value) || {Type, Value} <- Results ]}.
 
 encode_static_read_objects(Clock, Properties, Objects) ->
   EncTransaction = encode_start_transaction(Clock, Properties),
@@ -497,33 +507,39 @@ decode_update_operation(#'ApbUpdateOperation'{flagop = Op}) when Op /= undefined
 decode_update_operation(#'ApbUpdateOperation'{resetop = #'ApbCrdtReset'{}}) ->
   {reset, {}}.
 
-% general encoding of CRDT responses
 
-encode_read_object_resp({{_Key, Type, _Bucket}, Val}) ->
-  encode_read_object_resp(Type, Val).
+encode_crdt_type(antidote_crdt_register_lww) ->
+    reg;
+encode_crdt_type(antidote_crdt_register_mv) ->
+    mvreg;
+encode_crdt_type(antidote_crdt_counter_pn) ->
+    counter;
+encode_crdt_type(antidote_crdt_counter_fat) ->
+    counter;
+encode_crdt_type(antidote_crdt_set_aw) ->
+    set;
+encode_crdt_type(antidote_crdt_set_rw) ->
+    set;
+encode_crdt_type(antidote_crdt_map_go) ->
+    map;
+encode_crdt_type(antidote_crdt_map_rr) ->
+    map;
+encode_crdt_type(antidote_crdt_flag_ew) ->
+    flag;
+encode_crdt_type(antidote_crdt_flag_dw) ->
+    flag.
 
-encode_read_object_resp(antidote_crdt_register_lww, Val) ->
+encode_read_object_resp(register, Val) ->
   #'ApbReadObjectResp'{reg = #'ApbGetRegResp'{value = Val}};
-encode_read_object_resp(antidote_crdt_register_mv, Vals) ->
-  #'ApbReadObjectResp'{mvreg = #'ApbGetMVRegResp'{values = Vals}};
-encode_read_object_resp(antidote_crdt_counter_pn, Val) ->
+encode_read_object_resp(counter, Val) ->
   #'ApbReadObjectResp'{counter = #'ApbGetCounterResp'{value = Val}};
-encode_read_object_resp(antidote_crdt_counter_fat, Val) ->
-  #'ApbReadObjectResp'{counter = #'ApbGetCounterResp'{value = Val}};
-encode_read_object_resp(antidote_crdt_set_aw, Val) ->
+encode_read_object_resp(set, Val) ->
   #'ApbReadObjectResp'{set = #'ApbGetSetResp'{value = Val}};
-encode_read_object_resp(antidote_crdt_set_rw, Val) ->
-  #'ApbReadObjectResp'{set = #'ApbGetSetResp'{value = Val}};
-encode_read_object_resp(antidote_crdt_map_go, Val) ->
+encode_read_object_resp(map, Val) ->
   #'ApbReadObjectResp'{map = encode_map_get_resp(Val)};
-encode_read_object_resp(antidote_crdt_map_rr, Val) ->
-  #'ApbReadObjectResp'{map = encode_map_get_resp(Val)};
-encode_read_object_resp(antidote_crdt_flag_ew, Val) ->
-  #'ApbReadObjectResp'{flag = #'ApbGetFlagResp'{value = Val}};
-encode_read_object_resp(antidote_crdt_flag_dw, Val) ->
+encode_read_object_resp(flag, Val) ->
   #'ApbReadObjectResp'{flag = #'ApbGetFlagResp'{value = Val}}.
 
-% TODO why does this use counter instead of antidote_crdt_counter etc.?
 decode_read_object_resp(#'ApbReadObjectResp'{counter = #'ApbGetCounterResp'{value = Val}}) ->
   {counter, Val};
 decode_read_object_resp(#'ApbReadObjectResp'{set = #'ApbGetSetResp'{value = Val}}) ->
@@ -701,16 +717,15 @@ encode_get_connection_descriptor_resp({ok, Descriptor}) ->
         descriptor = Descriptor
     }.
 
-
 encode_connect_to_dcs(Descriptors) ->
     #'ApbConnectToDCs'{descriptors = Descriptors}.
 
 -ifdef(TEST).
 
 check(Msg) ->
-  [MsgCode, MsgData] = antidote_pb_codec:encode(Msg),
+  [MsgCode, MsgData] = encode_response(Msg),
   Result = decode(MsgCode, list_to_binary(MsgData)),
-  ?assertEqual(Result, Msg).
+  ?assertEqual(Msg, Result).
 
 %% Tests encode and decode
 start_transaction_test() ->
@@ -731,18 +746,13 @@ read_transaction_test() ->
 
   TxId = term_to_binary({12}),
   %% Dummy value, structure of TxId is opaque to client
-  check({read_objects, {Objects, TxId}}),
-
-  %% Test encoding error
-  check({read_objects_response, {error, unknown}}),
+ check({read_objects, {Objects, TxId}}).
 
   %% Test encoding results
-  Expected = [{counter, 1}, {set, [<<"a">>, <<"b">>]}],
-  Values = [1, [<<"a">>, <<"b">>]],
-  Msg = {read_objects_response, {ok, lists:zip(Objects, Values)}},
-  [MsgCode, MsgData] = antidote_pb_codec:encode(Msg),
-  Result = decode(MsgCode, list_to_binary(MsgData)),
-  ?assertEqual({read_objects_response, Expected}, Result).
+%   Expected = [{{<<"key1">>, antidote_crdt_counter_pn, <<"bucket1">>}, 1},
+%         {{<<"key2">>, antidote_crdt_set_aw, <<"bucket2">>},[<<"a">>,<<"b">>]}],
+%   Msg = {read_objects_response, {ok, Expected}},
+%   check(Msg).
 
 
 update_types_test() ->
@@ -759,8 +769,8 @@ update_types_test() ->
 
 error_messages_test() ->
   check({start_transaction_response, {error, unknown}}),
-  check({operation_response, {error, unknown}}),
-  check({read_objects_response, {error, unknown}}).
+  check({operation_response, {error, unknown}}).
+%  check({read_objects_response, {error, unknown}}).
 
 dc_management_test() ->
     Nodes = [antidote@host1, antidote@host2],
@@ -774,115 +784,35 @@ dc_management_test() ->
     check({connect_to_dcs, Descriptors}),
     ok.
 
--define(TestEncodeMsg(Msg),
-  ?assertEqual(
-    Msg,
-    decode_message(encode_message(Msg)))
-).
+check2(Msg) ->
+  [MsgCode, MsgData] = encode(Msg),
+  Result = decode(MsgCode, list_to_binary(MsgData)),
+  ?assertEqual(Result, Msg).
+
 
 message_encode_test() ->
   % decoding an encoded message should result in the same message
   Properties = [],
   Tx = term_to_binary(my_tx),
-  ?TestEncodeMsg({start_transaction, {<<"Clock">>, Properties}}),
-  %?TestEncodeMsg({abort_transaction, Tx}),
-  %?TestEncodeMsg({commit_transaction, Tx}),
-  %?TestEncodeMsg({update_objects, {[{{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}, increment, 42}], Tx}}),
-  ?TestEncodeMsg({static_update_objects, {<<"Clock">>, Properties, [{{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}, increment, 42}]}}),
-  ?TestEncodeMsg({static_read_objects, {<<"Clock">>, Properties, [{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}]}}),
-  %?TestEncodeMsg({read_objects, {[{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}], Tx}}),
-  ?TestEncodeMsg({create_dc, ['a@example.com', 'b@example.com']}),
-  ?TestEncodeMsg(get_connection_descriptor),
-  ?TestEncodeMsg({connect_to_dcs, [<<"Descriptor1">>, <<"Descriptor2">>]}),
-  ?TestEncodeMsg({error_response, {timeout, <<"Message">>}}),
-  ?TestEncodeMsg({start_transaction_response, {ok, Tx}}),
-  ?TestEncodeMsg({commit_response, {ok, <<"commit_time">>}}),
-  ?TestEncodeMsg({commit_response, {error, timeout}}),
-  %?TestEncodeMsg({static_read_objects_response, {ok, [{counter, 42}], <<"commit_time">>}}),
-  %?TestEncodeMsg({read_objects_response, [{counter, 42}]}),
-  ?TestEncodeMsg({operation_response, ok}),
-  ?TestEncodeMsg({operation_response, {error, timeout}}),
-  ?TestEncodeMsg({get_connection_descriptor_resp, {ok, <<"Descriptor">>}}),
-  ?TestEncodeMsg({get_connection_descriptor_resp, {error, timeout}}).
-
--define(TEST_CRDT_OP_CODEC(Type, Op, Param),
-  ?assertEqual(
-    {{<<"key">>, Type, <<"bucket">>}, Op, Param},
-    decode_update_op(encode_update_op({<<"key">>, Type, <<"bucket">>}, Op, Param)))
-).
-
--define(TEST_CRDT_RESP_CODEC(Type, ExpectedType, Val),
-  ?assertEqual(
-    {ExpectedType, Val},
-    decode_read_object_resp(encode_read_object_resp(Type, Val)))
-).
-
-crdt_encode_decode_test() ->
-  %% encoding the following operations and decoding them again, should give the same result
-
-  % Counter
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_counter_pn, increment, 1),
-  ?TEST_CRDT_RESP_CODEC(antidote_crdt_counter_pn, counter, 42),
-
-  % lww-register
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_register_lww, assign, <<"hello">>),
-  ?TEST_CRDT_RESP_CODEC(antidote_crdt_register_lww, reg, <<"blub">>),
-
-
-  % mv-register
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_register_mv, assign, <<"hello">>),
-  ?TEST_CRDT_RESP_CODEC(antidote_crdt_register_mv, mvreg, [<<"a">>, <<"b">>, <<"c">>]),
-
-  % set
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_set_aw, add, <<"hello">>),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_set_aw, add_all, [<<"a">>, <<"b">>, <<"c">>]),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_set_aw, remove, <<"hello">>),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_set_aw, remove_all, [<<"a">>, <<"b">>, <<"c">>]),
-  ?TEST_CRDT_RESP_CODEC(antidote_crdt_set_aw, set, [<<"a">>, <<"b">>, <<"c">>]),
-
-  % same for remove wins set:
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_set_rw, add, <<"hello">>),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_set_rw, add_all, [<<"a">>, <<"b">>, <<"c">>]),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_set_rw, remove, <<"hello">>),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_set_rw, remove_all, [<<"a">>, <<"b">>, <<"c">>]),
-  ?TEST_CRDT_RESP_CODEC(antidote_crdt_set_rw, set, [<<"a">>, <<"b">>, <<"c">>]),
-
-  % map
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, update, {{<<"key">>, antidote_crdt_register_mv}, {assign, <<"42">>}}),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, update, [
-    {{<<"a">>, antidote_crdt_register_mv}, {assign, <<"42">>}},
-    {{<<"b">>, antidote_crdt_set_aw}, {add, <<"x">>}}]),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, remove, {<<"key">>, antidote_crdt_register_mv}),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, remove, [
-    {<<"a">>, antidote_crdt_register_mv},
-    {<<"b">>, antidote_crdt_register_mv}]),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_map_rr, batch, {
-    [{{<<"a">>, antidote_crdt_register_mv}, {assign, <<"42">>}},
-      {{<<"b">>, antidote_crdt_set_aw}, {add, <<"x">>}}],
-    [{<<"a">>, antidote_crdt_register_mv},
-      {<<"b">>, antidote_crdt_register_mv}]}),
-
-  ?TEST_CRDT_RESP_CODEC(antidote_crdt_map_rr, map, [
-    {{<<"a">>, antidote_crdt_register_mv}, <<"42">>}
-  ]),
-
-  % gmap
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_map_go, update, {{<<"key">>, antidote_crdt_register_mv}, {assign, <<"42">>}}),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_map_go, update, [
-    {{<<"a">>, antidote_crdt_register_mv}, {assign, <<"42">>}},
-    {{<<"b">>, antidote_crdt_set_aw}, {add, <<"x">>}}]),
-  ?TEST_CRDT_RESP_CODEC(antidote_crdt_map_go, map, [
-    {{<<"a">>, antidote_crdt_register_mv}, <<"42">>}
-  ]),
-
-  % flag
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, enable, {}),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, disable, {}),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, reset, {}),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, enable, {}),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, disable, {}),
-  ?TEST_CRDT_OP_CODEC(antidote_crdt_flag_ew, reset, {}),
-
-  ok.
+  check2({start_transaction, {<<"Clock">>, Properties}}),
+  check2({abort_transaction, Tx}),
+  check2({commit_transaction, Tx}),
+  check2({update_objects, {[{{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}, increment, 42}], Tx}}),
+  check2({static_read_objects, {<<"Clock">>, Properties, [{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}]}}),
+  check2({static_update_objects, {<<"Clock">>, Properties, [{{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}, increment, 42}]}}),
+  check2({read_objects, {[{<<"Key">>, antidote_crdt_counter_pn, <<"Bucket">>}], Tx}}),
+  check2({create_dc, ['a@example.com', 'b@example.com']}),
+  check2(get_connection_descriptor),
+  check2({connect_to_dcs, [<<"Descriptor1">>, <<"Descriptor2">>]}),
+  check2({error_response, {timeout, <<"Message">>}}),
+  check2({start_transaction_response, {ok, Tx}}),
+  check2({commit_response, {ok, <<"commit_time">>}}),
+  check2({commit_response, {error, timeout}}),
+  check2({read_objects_response, {ok, [{counter, 43}]}}),
+  check2({static_read_objects_response, {[{counter, 42}], <<"commit_time">>}}),
+  check2({operation_response, ok}),
+  check2({operation_response, {error, timeout}}),
+  check2({get_connection_descriptor_resp, {ok, <<"Descriptor">>}}),
+  check2({get_connection_descriptor_resp, {error, timeout}}).
 
 -endif.
