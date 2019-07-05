@@ -20,38 +20,15 @@
 -module(antidote_pb_codec).
 
 -include("antidote_pb.hrl").
--include_lib("eunit/include/eunit.hrl").
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
 -export([decode_request/1, decode_response/1, encode_request/1, encode_response/1]).
 
--define(ASSERT_BINARY(X), case is_binary(X) of true -> ok; false -> throw({not_binary, X}) end).
--define(ASSERT_ALL_BINARY(Xs), [?ASSERT_BINARY(X) || X <- Xs]).
-
 % these are all top-level messages which can be sent on the wire
 -export_type([request/0, response_in/0, response_out/0, update/0, read_result/0]).
-
--type sendable() ::
-  #'ApbErrorResp'{}
-| #'ApbStartTransaction'{}
-| #'ApbStartTransactionResp'{}
-| #'ApbAbortTransaction'{}
-| #'ApbCommitTransaction'{}
-| #'ApbCommitResp'{}
-| #'ApbUpdateObjects'{}
-| #'ApbStaticUpdateObjects'{}
-| #'ApbStaticReadObjects'{}
-| #'ApbStaticReadObjectsResp'{}
-| #'ApbReadObjects'{}
-| #'ApbReadObjectsResp'{}
-| #'ApbOperationResp'{}
-| #'ApbCreateDC'{}
-| #'ApbGetConnectionDescriptor'{}
-| #'ApbGetConnectionDescriptorResp'{}
-| #'ApbConnectToDCs'{}
-.
 
 -type bound_object() :: {Key :: binary(), Type :: atom(), Bucket :: binary()}.
 -type update() :: {Object :: bound_object(), Op :: atom(), Param :: any()}.
@@ -108,6 +85,29 @@
 | {operation_response, ok | {error, Reason :: error_code()}}
 | {get_connection_descriptor_resp, {ok, Descriptor :: binary()} | {error, Reason :: error_code()}}.
 
+
+-type sendable() ::
+  #'ApbErrorResp'{}
+| #'ApbStartTransaction'{}
+| #'ApbStartTransactionResp'{}
+| #'ApbAbortTransaction'{}
+| #'ApbCommitTransaction'{}
+| #'ApbCommitResp'{}
+| #'ApbUpdateObjects'{}
+| #'ApbStaticUpdateObjects'{}
+| #'ApbStaticReadObjects'{}
+| #'ApbStaticReadObjectsResp'{}
+| #'ApbReadObjects'{}
+| #'ApbReadObjectsResp'{}
+| #'ApbOperationResp'{}
+| #'ApbCreateDC'{}
+| #'ApbGetConnectionDescriptor'{}
+| #'ApbGetConnectionDescriptorResp'{}
+| #'ApbConnectToDCs'{}
+.
+
+-define(ASSERT_BINARY(X), case is_binary(X) of true -> ok; false -> throw({not_binary, X}) end).
+-define(ASSERT_ALL_BINARY(Xs), [?ASSERT_BINARY(X) || X <- Xs]).
 
 -spec decode_request(binary()) -> request().
 decode_request(Data) ->
