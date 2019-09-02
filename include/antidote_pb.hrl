@@ -283,7 +283,7 @@
 -define('APBCREATEDCRESP_PB_H', true).
 -record('ApbCreateDCResp',
         {success                :: boolean() | 0 | 1, % = 1
-         errorcode              :: non_neg_integer() | undefined % = 3, 32 bits
+         errorcode              :: non_neg_integer() | undefined % = 2, 32 bits
         }).
 -endif.
 
@@ -314,7 +314,7 @@
 -define('APBCONNECTTODCSRESP_PB_H', true).
 -record('ApbConnectToDCsResp',
         {success                :: boolean() | 0 | 1, % = 1
-         errorcode              :: non_neg_integer() | undefined % = 3, 32 bits
+         errorcode              :: non_neg_integer() | undefined % = 2, 32 bits
         }).
 -endif.
 

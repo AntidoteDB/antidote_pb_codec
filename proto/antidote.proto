@@ -248,7 +248,7 @@ message ApbCreateDC {
 
 message ApbCreateDCResp {
   required bool success = 1;
-  optional uint32 errorcode = 3;
+  optional uint32 errorcode = 2;
 }
 
 // Get a connection descriptor of the DC to be given to other DCs.
@@ -271,5 +271,5 @@ message ApbConnectToDCs {
 
 message ApbConnectToDCsResp {
   required bool success = 1;
-  optional uint32 errorcode = 3;
+  optional uint32 errorcode = 2;
 }

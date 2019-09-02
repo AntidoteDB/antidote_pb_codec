@@ -960,7 +960,7 @@ encode_msg_ApbCreateDCResp(#'ApbCreateDCResp'{success =
        true ->
 	   begin
 	     TrF2 = id(F2, TrUserData),
-	     e_varint(TrF2, <<B1/binary, 24>>, TrUserData)
+	     e_varint(TrF2, <<B1/binary, 16>>, TrUserData)
 	   end
     end.
 
@@ -1035,7 +1035,7 @@ encode_msg_ApbConnectToDCsResp(#'ApbConnectToDCsResp'{success
        true ->
 	   begin
 	     TrF2 = id(F2, TrUserData),
-	     e_varint(TrF2, <<B1/binary, 24>>, TrUserData)
+	     e_varint(TrF2, <<B1/binary, 16>>, TrUserData)
 	   end
     end.
 
@@ -6562,7 +6562,7 @@ dfp_read_field_def_ApbCreateDCResp(<<8, Rest/binary>>,
 				   Z1, Z2, F@_1, F@_2, TrUserData) ->
     d_field_ApbCreateDCResp_success(Rest, Z1, Z2, F@_1,
 				    F@_2, TrUserData);
-dfp_read_field_def_ApbCreateDCResp(<<24, Rest/binary>>,
+dfp_read_field_def_ApbCreateDCResp(<<16, Rest/binary>>,
 				   Z1, Z2, F@_1, F@_2, TrUserData) ->
     d_field_ApbCreateDCResp_errorcode(Rest, Z1, Z2, F@_1,
 				      F@_2, TrUserData);
@@ -6588,7 +6588,7 @@ dg_read_field_def_ApbCreateDCResp(<<0:1, X:7,
       8 ->
 	  d_field_ApbCreateDCResp_success(Rest, 0, 0, F@_1, F@_2,
 					  TrUserData);
-      24 ->
+      16 ->
 	  d_field_ApbCreateDCResp_errorcode(Rest, 0, 0, F@_1,
 					    F@_2, TrUserData);
       _ ->
@@ -7102,7 +7102,7 @@ dfp_read_field_def_ApbConnectToDCsResp(<<8,
 				       Z1, Z2, F@_1, F@_2, TrUserData) ->
     d_field_ApbConnectToDCsResp_success(Rest, Z1, Z2, F@_1,
 					F@_2, TrUserData);
-dfp_read_field_def_ApbConnectToDCsResp(<<24,
+dfp_read_field_def_ApbConnectToDCsResp(<<16,
 					 Rest/binary>>,
 				       Z1, Z2, F@_1, F@_2, TrUserData) ->
     d_field_ApbConnectToDCsResp_errorcode(Rest, Z1, Z2,
@@ -7131,7 +7131,7 @@ dg_read_field_def_ApbConnectToDCsResp(<<0:1, X:7,
       8 ->
 	  d_field_ApbConnectToDCsResp_success(Rest, 0, 0, F@_1,
 					      F@_2, TrUserData);
-      24 ->
+      16 ->
 	  d_field_ApbConnectToDCsResp_errorcode(Rest, 0, 0, F@_1,
 						F@_2, TrUserData);
       _ ->
@@ -9129,7 +9129,7 @@ get_msg_defs() ->
      {{msg, 'ApbCreateDCResp'},
       [#field{name = success, fnum = 1, rnum = 2, type = bool,
 	      occurrence = required, opts = []},
-       #field{name = errorcode, fnum = 3, rnum = 3,
+       #field{name = errorcode, fnum = 2, rnum = 3,
 	      type = uint32, occurrence = optional, opts = []}]},
      {{msg, 'ApbGetConnectionDescriptor'}, []},
      {{msg, 'ApbGetConnectionDescriptorResp'},
@@ -9145,7 +9145,7 @@ get_msg_defs() ->
      {{msg, 'ApbConnectToDCsResp'},
       [#field{name = success, fnum = 1, rnum = 2, type = bool,
 	      occurrence = required, opts = []},
-       #field{name = errorcode, fnum = 3, rnum = 3,
+       #field{name = errorcode, fnum = 2, rnum = 3,
 	      type = uint32, occurrence = optional, opts = []}]}].
 
 
@@ -9420,7 +9420,7 @@ find_msg_def('ApbCreateDC') ->
 find_msg_def('ApbCreateDCResp') ->
     [#field{name = success, fnum = 1, rnum = 2, type = bool,
 	    occurrence = required, opts = []},
-     #field{name = errorcode, fnum = 3, rnum = 3,
+     #field{name = errorcode, fnum = 2, rnum = 3,
 	    type = uint32, occurrence = optional, opts = []}];
 find_msg_def('ApbGetConnectionDescriptor') -> [];
 find_msg_def('ApbGetConnectionDescriptorResp') ->
@@ -9436,7 +9436,7 @@ find_msg_def('ApbConnectToDCs') ->
 find_msg_def('ApbConnectToDCsResp') ->
     [#field{name = success, fnum = 1, rnum = 2, type = bool,
 	    occurrence = required, opts = []},
-     #field{name = errorcode, fnum = 3, rnum = 3,
+     #field{name = errorcode, fnum = 2, rnum = 3,
 	    type = uint32, occurrence = optional, opts = []}];
 find_msg_def(_) -> error.
 
