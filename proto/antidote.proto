@@ -273,20 +273,3 @@ message ApbConnectToDCsResp {
   required bool success = 1;
   optional uint32 errorcode = 2;
 }
-
-message ApbNodesReady {
-  repeated string nodes = 1;
-}
-
-message ApbNodeStatus {
-    required string node = 1;
-    required bool ready = 2;
-}
-
-message ApbNodesReadyResp {
-  required bool success = 1;  
-  repeated ApbNodeStatus status = 2;
-  optional uint32 errorcode = 3;
-}
-
-

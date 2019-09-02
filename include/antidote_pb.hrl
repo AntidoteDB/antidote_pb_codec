@@ -318,28 +318,4 @@
         }).
 -endif.
 
--ifndef('APBNODESREADY_PB_H').
--define('APBNODESREADY_PB_H', true).
--record('ApbNodesReady',
-        {nodes = []             :: [iodata()] | undefined % = 1
-        }).
--endif.
-
--ifndef('APBNODESTATUS_PB_H').
--define('APBNODESTATUS_PB_H', true).
--record('ApbNodeStatus',
-        {node                   :: iodata(),        % = 1
-         ready                  :: boolean() | 0 | 1 % = 2
-        }).
--endif.
-
--ifndef('APBNODESREADYRESP_PB_H').
--define('APBNODESREADYRESP_PB_H', true).
--record('ApbNodesReadyResp',
-        {success                :: boolean() | 0 | 1, % = 1
-         status = []            :: [antidote_pb:'ApbNodeStatus'()] | undefined, % = 2
-         errorcode              :: non_neg_integer() | undefined % = 3, 32 bits
-        }).
--endif.
-
 -endif.

@@ -111,26 +111,20 @@
 
 -type 'ApbConnectToDCsResp'() :: #'ApbConnectToDCsResp'{}.
 
--type 'ApbNodesReady'() :: #'ApbNodesReady'{}.
+-export_type(['ApbErrorResp'/0, 'ApbCounterUpdate'/0, 'ApbGetCounterResp'/0, 'ApbSetUpdate'/0, 'ApbGetSetResp'/0, 'ApbRegUpdate'/0, 'ApbGetRegResp'/0, 'ApbGetMVRegResp'/0, 'ApbMapKey'/0, 'ApbMapUpdate'/0, 'ApbMapNestedUpdate'/0, 'ApbGetMapResp'/0, 'ApbMapEntry'/0, 'ApbFlagUpdate'/0, 'ApbGetFlagResp'/0, 'ApbCrdtReset'/0, 'ApbOperationResp'/0, 'ApbTxnProperties'/0, 'ApbBoundObject'/0, 'ApbReadObjects'/0, 'ApbUpdateOp'/0, 'ApbUpdateOperation'/0, 'ApbUpdateObjects'/0, 'ApbStartTransaction'/0, 'ApbAbortTransaction'/0, 'ApbCommitTransaction'/0, 'ApbStaticUpdateObjects'/0, 'ApbStaticReadObjects'/0, 'ApbStartTransactionResp'/0, 'ApbReadObjectResp'/0, 'ApbReadObjectsResp'/0, 'ApbCommitResp'/0, 'ApbStaticReadObjectsResp'/0, 'ApbCreateDC'/0, 'ApbCreateDCResp'/0, 'ApbGetConnectionDescriptor'/0, 'ApbGetConnectionDescriptorResp'/0, 'ApbConnectToDCs'/0, 'ApbConnectToDCsResp'/0]).
 
--type 'ApbNodeStatus'() :: #'ApbNodeStatus'{}.
-
--type 'ApbNodesReadyResp'() :: #'ApbNodesReadyResp'{}.
-
--export_type(['ApbErrorResp'/0, 'ApbCounterUpdate'/0, 'ApbGetCounterResp'/0, 'ApbSetUpdate'/0, 'ApbGetSetResp'/0, 'ApbRegUpdate'/0, 'ApbGetRegResp'/0, 'ApbGetMVRegResp'/0, 'ApbMapKey'/0, 'ApbMapUpdate'/0, 'ApbMapNestedUpdate'/0, 'ApbGetMapResp'/0, 'ApbMapEntry'/0, 'ApbFlagUpdate'/0, 'ApbGetFlagResp'/0, 'ApbCrdtReset'/0, 'ApbOperationResp'/0, 'ApbTxnProperties'/0, 'ApbBoundObject'/0, 'ApbReadObjects'/0, 'ApbUpdateOp'/0, 'ApbUpdateOperation'/0, 'ApbUpdateObjects'/0, 'ApbStartTransaction'/0, 'ApbAbortTransaction'/0, 'ApbCommitTransaction'/0, 'ApbStaticUpdateObjects'/0, 'ApbStaticReadObjects'/0, 'ApbStartTransactionResp'/0, 'ApbReadObjectResp'/0, 'ApbReadObjectsResp'/0, 'ApbCommitResp'/0, 'ApbStaticReadObjectsResp'/0, 'ApbCreateDC'/0, 'ApbCreateDCResp'/0, 'ApbGetConnectionDescriptor'/0, 'ApbGetConnectionDescriptorResp'/0, 'ApbConnectToDCs'/0, 'ApbConnectToDCsResp'/0, 'ApbNodesReady'/0, 'ApbNodeStatus'/0, 'ApbNodesReadyResp'/0]).
-
--spec encode_msg(#'ApbErrorResp'{} | #'ApbCounterUpdate'{} | #'ApbGetCounterResp'{} | #'ApbSetUpdate'{} | #'ApbGetSetResp'{} | #'ApbRegUpdate'{} | #'ApbGetRegResp'{} | #'ApbGetMVRegResp'{} | #'ApbMapKey'{} | #'ApbMapUpdate'{} | #'ApbMapNestedUpdate'{} | #'ApbGetMapResp'{} | #'ApbMapEntry'{} | #'ApbFlagUpdate'{} | #'ApbGetFlagResp'{} | #'ApbCrdtReset'{} | #'ApbOperationResp'{} | #'ApbTxnProperties'{} | #'ApbBoundObject'{} | #'ApbReadObjects'{} | #'ApbUpdateOp'{} | #'ApbUpdateOperation'{} | #'ApbUpdateObjects'{} | #'ApbStartTransaction'{} | #'ApbAbortTransaction'{} | #'ApbCommitTransaction'{} | #'ApbStaticUpdateObjects'{} | #'ApbStaticReadObjects'{} | #'ApbStartTransactionResp'{} | #'ApbReadObjectResp'{} | #'ApbReadObjectsResp'{} | #'ApbCommitResp'{} | #'ApbStaticReadObjectsResp'{} | #'ApbCreateDC'{} | #'ApbCreateDCResp'{} | #'ApbGetConnectionDescriptor'{} | #'ApbGetConnectionDescriptorResp'{} | #'ApbConnectToDCs'{} | #'ApbConnectToDCsResp'{} | #'ApbNodesReady'{} | #'ApbNodeStatus'{} | #'ApbNodesReadyResp'{}) -> binary().
+-spec encode_msg(#'ApbErrorResp'{} | #'ApbCounterUpdate'{} | #'ApbGetCounterResp'{} | #'ApbSetUpdate'{} | #'ApbGetSetResp'{} | #'ApbRegUpdate'{} | #'ApbGetRegResp'{} | #'ApbGetMVRegResp'{} | #'ApbMapKey'{} | #'ApbMapUpdate'{} | #'ApbMapNestedUpdate'{} | #'ApbGetMapResp'{} | #'ApbMapEntry'{} | #'ApbFlagUpdate'{} | #'ApbGetFlagResp'{} | #'ApbCrdtReset'{} | #'ApbOperationResp'{} | #'ApbTxnProperties'{} | #'ApbBoundObject'{} | #'ApbReadObjects'{} | #'ApbUpdateOp'{} | #'ApbUpdateOperation'{} | #'ApbUpdateObjects'{} | #'ApbStartTransaction'{} | #'ApbAbortTransaction'{} | #'ApbCommitTransaction'{} | #'ApbStaticUpdateObjects'{} | #'ApbStaticReadObjects'{} | #'ApbStartTransactionResp'{} | #'ApbReadObjectResp'{} | #'ApbReadObjectsResp'{} | #'ApbCommitResp'{} | #'ApbStaticReadObjectsResp'{} | #'ApbCreateDC'{} | #'ApbCreateDCResp'{} | #'ApbGetConnectionDescriptor'{} | #'ApbGetConnectionDescriptorResp'{} | #'ApbConnectToDCs'{} | #'ApbConnectToDCsResp'{}) -> binary().
 encode_msg(Msg) when tuple_size(Msg) >= 1 ->
     encode_msg(Msg, element(1, Msg), []).
 
--spec encode_msg(#'ApbErrorResp'{} | #'ApbCounterUpdate'{} | #'ApbGetCounterResp'{} | #'ApbSetUpdate'{} | #'ApbGetSetResp'{} | #'ApbRegUpdate'{} | #'ApbGetRegResp'{} | #'ApbGetMVRegResp'{} | #'ApbMapKey'{} | #'ApbMapUpdate'{} | #'ApbMapNestedUpdate'{} | #'ApbGetMapResp'{} | #'ApbMapEntry'{} | #'ApbFlagUpdate'{} | #'ApbGetFlagResp'{} | #'ApbCrdtReset'{} | #'ApbOperationResp'{} | #'ApbTxnProperties'{} | #'ApbBoundObject'{} | #'ApbReadObjects'{} | #'ApbUpdateOp'{} | #'ApbUpdateOperation'{} | #'ApbUpdateObjects'{} | #'ApbStartTransaction'{} | #'ApbAbortTransaction'{} | #'ApbCommitTransaction'{} | #'ApbStaticUpdateObjects'{} | #'ApbStaticReadObjects'{} | #'ApbStartTransactionResp'{} | #'ApbReadObjectResp'{} | #'ApbReadObjectsResp'{} | #'ApbCommitResp'{} | #'ApbStaticReadObjectsResp'{} | #'ApbCreateDC'{} | #'ApbCreateDCResp'{} | #'ApbGetConnectionDescriptor'{} | #'ApbGetConnectionDescriptorResp'{} | #'ApbConnectToDCs'{} | #'ApbConnectToDCsResp'{} | #'ApbNodesReady'{} | #'ApbNodeStatus'{} | #'ApbNodesReadyResp'{}, atom() | list()) -> binary().
+-spec encode_msg(#'ApbErrorResp'{} | #'ApbCounterUpdate'{} | #'ApbGetCounterResp'{} | #'ApbSetUpdate'{} | #'ApbGetSetResp'{} | #'ApbRegUpdate'{} | #'ApbGetRegResp'{} | #'ApbGetMVRegResp'{} | #'ApbMapKey'{} | #'ApbMapUpdate'{} | #'ApbMapNestedUpdate'{} | #'ApbGetMapResp'{} | #'ApbMapEntry'{} | #'ApbFlagUpdate'{} | #'ApbGetFlagResp'{} | #'ApbCrdtReset'{} | #'ApbOperationResp'{} | #'ApbTxnProperties'{} | #'ApbBoundObject'{} | #'ApbReadObjects'{} | #'ApbUpdateOp'{} | #'ApbUpdateOperation'{} | #'ApbUpdateObjects'{} | #'ApbStartTransaction'{} | #'ApbAbortTransaction'{} | #'ApbCommitTransaction'{} | #'ApbStaticUpdateObjects'{} | #'ApbStaticReadObjects'{} | #'ApbStartTransactionResp'{} | #'ApbReadObjectResp'{} | #'ApbReadObjectsResp'{} | #'ApbCommitResp'{} | #'ApbStaticReadObjectsResp'{} | #'ApbCreateDC'{} | #'ApbCreateDCResp'{} | #'ApbGetConnectionDescriptor'{} | #'ApbGetConnectionDescriptorResp'{} | #'ApbConnectToDCs'{} | #'ApbConnectToDCsResp'{}, atom() | list()) -> binary().
 encode_msg(Msg, MsgName) when is_atom(MsgName) ->
     encode_msg(Msg, MsgName, []);
 encode_msg(Msg, Opts)
     when tuple_size(Msg) >= 1, is_list(Opts) ->
     encode_msg(Msg, element(1, Msg), Opts).
 
--spec encode_msg(#'ApbErrorResp'{} | #'ApbCounterUpdate'{} | #'ApbGetCounterResp'{} | #'ApbSetUpdate'{} | #'ApbGetSetResp'{} | #'ApbRegUpdate'{} | #'ApbGetRegResp'{} | #'ApbGetMVRegResp'{} | #'ApbMapKey'{} | #'ApbMapUpdate'{} | #'ApbMapNestedUpdate'{} | #'ApbGetMapResp'{} | #'ApbMapEntry'{} | #'ApbFlagUpdate'{} | #'ApbGetFlagResp'{} | #'ApbCrdtReset'{} | #'ApbOperationResp'{} | #'ApbTxnProperties'{} | #'ApbBoundObject'{} | #'ApbReadObjects'{} | #'ApbUpdateOp'{} | #'ApbUpdateOperation'{} | #'ApbUpdateObjects'{} | #'ApbStartTransaction'{} | #'ApbAbortTransaction'{} | #'ApbCommitTransaction'{} | #'ApbStaticUpdateObjects'{} | #'ApbStaticReadObjects'{} | #'ApbStartTransactionResp'{} | #'ApbReadObjectResp'{} | #'ApbReadObjectsResp'{} | #'ApbCommitResp'{} | #'ApbStaticReadObjectsResp'{} | #'ApbCreateDC'{} | #'ApbCreateDCResp'{} | #'ApbGetConnectionDescriptor'{} | #'ApbGetConnectionDescriptorResp'{} | #'ApbConnectToDCs'{} | #'ApbConnectToDCsResp'{} | #'ApbNodesReady'{} | #'ApbNodeStatus'{} | #'ApbNodesReadyResp'{}, atom(), list()) -> binary().
+-spec encode_msg(#'ApbErrorResp'{} | #'ApbCounterUpdate'{} | #'ApbGetCounterResp'{} | #'ApbSetUpdate'{} | #'ApbGetSetResp'{} | #'ApbRegUpdate'{} | #'ApbGetRegResp'{} | #'ApbGetMVRegResp'{} | #'ApbMapKey'{} | #'ApbMapUpdate'{} | #'ApbMapNestedUpdate'{} | #'ApbGetMapResp'{} | #'ApbMapEntry'{} | #'ApbFlagUpdate'{} | #'ApbGetFlagResp'{} | #'ApbCrdtReset'{} | #'ApbOperationResp'{} | #'ApbTxnProperties'{} | #'ApbBoundObject'{} | #'ApbReadObjects'{} | #'ApbUpdateOp'{} | #'ApbUpdateOperation'{} | #'ApbUpdateObjects'{} | #'ApbStartTransaction'{} | #'ApbAbortTransaction'{} | #'ApbCommitTransaction'{} | #'ApbStaticUpdateObjects'{} | #'ApbStaticReadObjects'{} | #'ApbStartTransactionResp'{} | #'ApbReadObjectResp'{} | #'ApbReadObjectsResp'{} | #'ApbCommitResp'{} | #'ApbStaticReadObjectsResp'{} | #'ApbCreateDC'{} | #'ApbCreateDCResp'{} | #'ApbGetConnectionDescriptor'{} | #'ApbGetConnectionDescriptorResp'{} | #'ApbConnectToDCs'{} | #'ApbConnectToDCsResp'{}, atom(), list()) -> binary().
 encode_msg(Msg, MsgName, Opts) ->
     case proplists:get_bool(verify, Opts) of
       true -> verify_msg(Msg, MsgName, Opts);
@@ -252,16 +246,7 @@ encode_msg(Msg, MsgName, Opts) ->
 				     TrUserData);
       'ApbConnectToDCsResp' ->
 	  encode_msg_ApbConnectToDCsResp(id(Msg, TrUserData),
-					 TrUserData);
-      'ApbNodesReady' ->
-	  encode_msg_ApbNodesReady(id(Msg, TrUserData),
-				   TrUserData);
-      'ApbNodeStatus' ->
-	  encode_msg_ApbNodeStatus(id(Msg, TrUserData),
-				   TrUserData);
-      'ApbNodesReadyResp' ->
-	  encode_msg_ApbNodesReadyResp(id(Msg, TrUserData),
-				       TrUserData)
+					 TrUserData)
     end.
 
 
@@ -1054,63 +1039,6 @@ encode_msg_ApbConnectToDCsResp(#'ApbConnectToDCsResp'{success
 	   end
     end.
 
-encode_msg_ApbNodesReady(Msg, TrUserData) ->
-    encode_msg_ApbNodesReady(Msg, <<>>, TrUserData).
-
-
-encode_msg_ApbNodesReady(#'ApbNodesReady'{nodes = F1},
-			 Bin, TrUserData) ->
-    begin
-      TrF1 = id(F1, TrUserData),
-      if TrF1 == [] -> Bin;
-	 true ->
-	     e_field_ApbNodesReady_nodes(TrF1, Bin, TrUserData)
-      end
-    end.
-
-encode_msg_ApbNodeStatus(Msg, TrUserData) ->
-    encode_msg_ApbNodeStatus(Msg, <<>>, TrUserData).
-
-
-encode_msg_ApbNodeStatus(#'ApbNodeStatus'{node = F1,
-					  ready = F2},
-			 Bin, TrUserData) ->
-    B1 = begin
-	   TrF1 = id(F1, TrUserData),
-	   e_type_string(TrF1, <<Bin/binary, 10>>, TrUserData)
-	 end,
-    begin
-      TrF2 = id(F2, TrUserData),
-      e_type_bool(TrF2, <<B1/binary, 16>>, TrUserData)
-    end.
-
-encode_msg_ApbNodesReadyResp(Msg, TrUserData) ->
-    encode_msg_ApbNodesReadyResp(Msg, <<>>, TrUserData).
-
-
-encode_msg_ApbNodesReadyResp(#'ApbNodesReadyResp'{success
-						      = F1,
-						  status = F2, errorcode = F3},
-			     Bin, TrUserData) ->
-    B1 = begin
-	   TrF1 = id(F1, TrUserData),
-	   e_type_bool(TrF1, <<Bin/binary, 8>>, TrUserData)
-	 end,
-    B2 = begin
-	   TrF2 = id(F2, TrUserData),
-	   if TrF2 == [] -> B1;
-	      true ->
-		  e_field_ApbNodesReadyResp_status(TrF2, B1, TrUserData)
-	   end
-	 end,
-    if F3 == undefined -> B2;
-       true ->
-	   begin
-	     TrF3 = id(F3, TrUserData),
-	     e_varint(TrF3, <<B2/binary, 24>>, TrUserData)
-	   end
-    end.
-
 e_field_ApbSetUpdate_adds([Elem | Rest], Bin,
 			  TrUserData) ->
     Bin2 = <<Bin/binary, 18>>,
@@ -1447,34 +1375,6 @@ e_field_ApbConnectToDCs_descriptors([], Bin,
 				    _TrUserData) ->
     Bin.
 
-e_field_ApbNodesReady_nodes([Elem | Rest], Bin,
-			    TrUserData) ->
-    Bin2 = <<Bin/binary, 10>>,
-    Bin3 = e_type_string(id(Elem, TrUserData), Bin2,
-			 TrUserData),
-    e_field_ApbNodesReady_nodes(Rest, Bin3, TrUserData);
-e_field_ApbNodesReady_nodes([], Bin, _TrUserData) ->
-    Bin.
-
-e_mfield_ApbNodesReadyResp_status(Msg, Bin,
-				  TrUserData) ->
-    SubBin = encode_msg_ApbNodeStatus(Msg, <<>>,
-				      TrUserData),
-    Bin2 = e_varint(byte_size(SubBin), Bin),
-    <<Bin2/binary, SubBin/binary>>.
-
-e_field_ApbNodesReadyResp_status([Elem | Rest], Bin,
-				 TrUserData) ->
-    Bin2 = <<Bin/binary, 18>>,
-    Bin3 = e_mfield_ApbNodesReadyResp_status(id(Elem,
-						TrUserData),
-					     Bin2, TrUserData),
-    e_field_ApbNodesReadyResp_status(Rest, Bin3,
-				     TrUserData);
-e_field_ApbNodesReadyResp_status([], Bin,
-				 _TrUserData) ->
-    Bin.
-
 e_enum_CRDT_type('COUNTER', Bin, _TrUserData) ->
     <<Bin/binary, 3>>;
 e_enum_CRDT_type('ORSET', Bin, _TrUserData) ->
@@ -1756,16 +1656,6 @@ decode_msg_2_doit('ApbConnectToDCs', Bin, TrUserData) ->
 decode_msg_2_doit('ApbConnectToDCsResp', Bin,
 		  TrUserData) ->
     id(decode_msg_ApbConnectToDCsResp(Bin, TrUserData),
-       TrUserData);
-decode_msg_2_doit('ApbNodesReady', Bin, TrUserData) ->
-    id(decode_msg_ApbNodesReady(Bin, TrUserData),
-       TrUserData);
-decode_msg_2_doit('ApbNodeStatus', Bin, TrUserData) ->
-    id(decode_msg_ApbNodeStatus(Bin, TrUserData),
-       TrUserData);
-decode_msg_2_doit('ApbNodesReadyResp', Bin,
-		  TrUserData) ->
-    id(decode_msg_ApbNodesReadyResp(Bin, TrUserData),
        TrUserData).
 
 
@@ -7341,407 +7231,6 @@ skip_64_ApbConnectToDCsResp(<<_:64, Rest/binary>>, Z1,
     dfp_read_field_def_ApbConnectToDCsResp(Rest, Z1, Z2,
 					   F@_1, F@_2, TrUserData).
 
-decode_msg_ApbNodesReady(Bin, TrUserData) ->
-    dfp_read_field_def_ApbNodesReady(Bin, 0, 0,
-				     id([], TrUserData), TrUserData).
-
-dfp_read_field_def_ApbNodesReady(<<10, Rest/binary>>,
-				 Z1, Z2, F@_1, TrUserData) ->
-    d_field_ApbNodesReady_nodes(Rest, Z1, Z2, F@_1,
-				TrUserData);
-dfp_read_field_def_ApbNodesReady(<<>>, 0, 0, R1,
-				 TrUserData) ->
-    #'ApbNodesReady'{nodes = lists_reverse(R1, TrUserData)};
-dfp_read_field_def_ApbNodesReady(Other, Z1, Z2, F@_1,
-				 TrUserData) ->
-    dg_read_field_def_ApbNodesReady(Other, Z1, Z2, F@_1,
-				    TrUserData).
-
-dg_read_field_def_ApbNodesReady(<<1:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_ApbNodesReady(Rest, N + 7,
-				    X bsl N + Acc, F@_1, TrUserData);
-dg_read_field_def_ApbNodesReady(<<0:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      10 ->
-	  d_field_ApbNodesReady_nodes(Rest, 0, 0, F@_1,
-				      TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_ApbNodesReady(Rest, 0, 0, F@_1, TrUserData);
-	    1 ->
-		skip_64_ApbNodesReady(Rest, 0, 0, F@_1, TrUserData);
-	    2 ->
-		skip_length_delimited_ApbNodesReady(Rest, 0, 0, F@_1,
-						    TrUserData);
-	    3 ->
-		skip_group_ApbNodesReady(Rest, Key bsr 3, 0, F@_1,
-					 TrUserData);
-	    5 -> skip_32_ApbNodesReady(Rest, 0, 0, F@_1, TrUserData)
-	  end
-    end;
-dg_read_field_def_ApbNodesReady(<<>>, 0, 0, R1,
-				TrUserData) ->
-    #'ApbNodesReady'{nodes = lists_reverse(R1, TrUserData)}.
-
-d_field_ApbNodesReady_nodes(<<1:1, X:7, Rest/binary>>,
-			    N, Acc, F@_1, TrUserData)
-    when N < 57 ->
-    d_field_ApbNodesReady_nodes(Rest, N + 7, X bsl N + Acc,
-				F@_1, TrUserData);
-d_field_ApbNodesReady_nodes(<<0:1, X:7, Rest/binary>>,
-			    N, Acc, Prev, TrUserData) ->
-    {NewFValue, RestF} = begin
-			   Len = X bsl N + Acc,
-			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
-			   {id(binary:copy(Bytes), TrUserData), Rest2}
-			 end,
-    dfp_read_field_def_ApbNodesReady(RestF, 0, 0,
-				     cons(NewFValue, Prev, TrUserData),
-				     TrUserData).
-
-skip_varint_ApbNodesReady(<<1:1, _:7, Rest/binary>>, Z1,
-			  Z2, F@_1, TrUserData) ->
-    skip_varint_ApbNodesReady(Rest, Z1, Z2, F@_1,
-			      TrUserData);
-skip_varint_ApbNodesReady(<<0:1, _:7, Rest/binary>>, Z1,
-			  Z2, F@_1, TrUserData) ->
-    dfp_read_field_def_ApbNodesReady(Rest, Z1, Z2, F@_1,
-				     TrUserData).
-
-skip_length_delimited_ApbNodesReady(<<1:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_ApbNodesReady(Rest, N + 7,
-					X bsl N + Acc, F@_1, TrUserData);
-skip_length_delimited_ApbNodesReady(<<0:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_ApbNodesReady(Rest2, 0, 0, F@_1,
-				     TrUserData).
-
-skip_group_ApbNodesReady(Bin, FNum, Z2, F@_1,
-			 TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_ApbNodesReady(Rest, 0, Z2, F@_1,
-				     TrUserData).
-
-skip_32_ApbNodesReady(<<_:32, Rest/binary>>, Z1, Z2,
-		      F@_1, TrUserData) ->
-    dfp_read_field_def_ApbNodesReady(Rest, Z1, Z2, F@_1,
-				     TrUserData).
-
-skip_64_ApbNodesReady(<<_:64, Rest/binary>>, Z1, Z2,
-		      F@_1, TrUserData) ->
-    dfp_read_field_def_ApbNodesReady(Rest, Z1, Z2, F@_1,
-				     TrUserData).
-
-decode_msg_ApbNodeStatus(Bin, TrUserData) ->
-    dfp_read_field_def_ApbNodeStatus(Bin, 0, 0,
-				     id(undefined, TrUserData),
-				     id(undefined, TrUserData), TrUserData).
-
-dfp_read_field_def_ApbNodeStatus(<<10, Rest/binary>>,
-				 Z1, Z2, F@_1, F@_2, TrUserData) ->
-    d_field_ApbNodeStatus_node(Rest, Z1, Z2, F@_1, F@_2,
-			       TrUserData);
-dfp_read_field_def_ApbNodeStatus(<<16, Rest/binary>>,
-				 Z1, Z2, F@_1, F@_2, TrUserData) ->
-    d_field_ApbNodeStatus_ready(Rest, Z1, Z2, F@_1, F@_2,
-				TrUserData);
-dfp_read_field_def_ApbNodeStatus(<<>>, 0, 0, F@_1, F@_2,
-				 _) ->
-    #'ApbNodeStatus'{node = F@_1, ready = F@_2};
-dfp_read_field_def_ApbNodeStatus(Other, Z1, Z2, F@_1,
-				 F@_2, TrUserData) ->
-    dg_read_field_def_ApbNodeStatus(Other, Z1, Z2, F@_1,
-				    F@_2, TrUserData).
-
-dg_read_field_def_ApbNodeStatus(<<1:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_ApbNodeStatus(Rest, N + 7,
-				    X bsl N + Acc, F@_1, F@_2, TrUserData);
-dg_read_field_def_ApbNodeStatus(<<0:1, X:7,
-				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      10 ->
-	  d_field_ApbNodeStatus_node(Rest, 0, 0, F@_1, F@_2,
-				     TrUserData);
-      16 ->
-	  d_field_ApbNodeStatus_ready(Rest, 0, 0, F@_1, F@_2,
-				      TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_ApbNodeStatus(Rest, 0, 0, F@_1, F@_2,
-					  TrUserData);
-	    1 ->
-		skip_64_ApbNodeStatus(Rest, 0, 0, F@_1, F@_2,
-				      TrUserData);
-	    2 ->
-		skip_length_delimited_ApbNodeStatus(Rest, 0, 0, F@_1,
-						    F@_2, TrUserData);
-	    3 ->
-		skip_group_ApbNodeStatus(Rest, Key bsr 3, 0, F@_1, F@_2,
-					 TrUserData);
-	    5 ->
-		skip_32_ApbNodeStatus(Rest, 0, 0, F@_1, F@_2,
-				      TrUserData)
-	  end
-    end;
-dg_read_field_def_ApbNodeStatus(<<>>, 0, 0, F@_1, F@_2,
-				_) ->
-    #'ApbNodeStatus'{node = F@_1, ready = F@_2}.
-
-d_field_ApbNodeStatus_node(<<1:1, X:7, Rest/binary>>, N,
-			   Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_ApbNodeStatus_node(Rest, N + 7, X bsl N + Acc,
-			       F@_1, F@_2, TrUserData);
-d_field_ApbNodeStatus_node(<<0:1, X:7, Rest/binary>>, N,
-			   Acc, _, F@_2, TrUserData) ->
-    {NewFValue, RestF} = begin
-			   Len = X bsl N + Acc,
-			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
-			   {id(binary:copy(Bytes), TrUserData), Rest2}
-			 end,
-    dfp_read_field_def_ApbNodeStatus(RestF, 0, 0, NewFValue,
-				     F@_2, TrUserData).
-
-d_field_ApbNodeStatus_ready(<<1:1, X:7, Rest/binary>>,
-			    N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    d_field_ApbNodeStatus_ready(Rest, N + 7, X bsl N + Acc,
-				F@_1, F@_2, TrUserData);
-d_field_ApbNodeStatus_ready(<<0:1, X:7, Rest/binary>>,
-			    N, Acc, F@_1, _, TrUserData) ->
-    {NewFValue, RestF} = {id(X bsl N + Acc =/= 0,
-			     TrUserData),
-			  Rest},
-    dfp_read_field_def_ApbNodeStatus(RestF, 0, 0, F@_1,
-				     NewFValue, TrUserData).
-
-skip_varint_ApbNodeStatus(<<1:1, _:7, Rest/binary>>, Z1,
-			  Z2, F@_1, F@_2, TrUserData) ->
-    skip_varint_ApbNodeStatus(Rest, Z1, Z2, F@_1, F@_2,
-			      TrUserData);
-skip_varint_ApbNodeStatus(<<0:1, _:7, Rest/binary>>, Z1,
-			  Z2, F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_ApbNodeStatus(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_length_delimited_ApbNodeStatus(<<1:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_ApbNodeStatus(Rest, N + 7,
-					X bsl N + Acc, F@_1, F@_2, TrUserData);
-skip_length_delimited_ApbNodeStatus(<<0:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_ApbNodeStatus(Rest2, 0, 0, F@_1,
-				     F@_2, TrUserData).
-
-skip_group_ApbNodeStatus(Bin, FNum, Z2, F@_1, F@_2,
-			 TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_ApbNodeStatus(Rest, 0, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_32_ApbNodeStatus(<<_:32, Rest/binary>>, Z1, Z2,
-		      F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_ApbNodeStatus(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-skip_64_ApbNodeStatus(<<_:64, Rest/binary>>, Z1, Z2,
-		      F@_1, F@_2, TrUserData) ->
-    dfp_read_field_def_ApbNodeStatus(Rest, Z1, Z2, F@_1,
-				     F@_2, TrUserData).
-
-decode_msg_ApbNodesReadyResp(Bin, TrUserData) ->
-    dfp_read_field_def_ApbNodesReadyResp(Bin, 0, 0,
-					 id(undefined, TrUserData),
-					 id([], TrUserData),
-					 id(undefined, TrUserData), TrUserData).
-
-dfp_read_field_def_ApbNodesReadyResp(<<8, Rest/binary>>,
-				     Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
-    d_field_ApbNodesReadyResp_success(Rest, Z1, Z2, F@_1,
-				      F@_2, F@_3, TrUserData);
-dfp_read_field_def_ApbNodesReadyResp(<<18,
-				       Rest/binary>>,
-				     Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
-    d_field_ApbNodesReadyResp_status(Rest, Z1, Z2, F@_1,
-				     F@_2, F@_3, TrUserData);
-dfp_read_field_def_ApbNodesReadyResp(<<24,
-				       Rest/binary>>,
-				     Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
-    d_field_ApbNodesReadyResp_errorcode(Rest, Z1, Z2, F@_1,
-					F@_2, F@_3, TrUserData);
-dfp_read_field_def_ApbNodesReadyResp(<<>>, 0, 0, F@_1,
-				     R1, F@_3, TrUserData) ->
-    #'ApbNodesReadyResp'{success = F@_1,
-			 status = lists_reverse(R1, TrUserData),
-			 errorcode = F@_3};
-dfp_read_field_def_ApbNodesReadyResp(Other, Z1, Z2,
-				     F@_1, F@_2, F@_3, TrUserData) ->
-    dg_read_field_def_ApbNodesReadyResp(Other, Z1, Z2, F@_1,
-					F@_2, F@_3, TrUserData).
-
-dg_read_field_def_ApbNodesReadyResp(<<1:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 32 - 7 ->
-    dg_read_field_def_ApbNodesReadyResp(Rest, N + 7,
-					X bsl N + Acc, F@_1, F@_2, F@_3,
-					TrUserData);
-dg_read_field_def_ApbNodesReadyResp(<<0:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, F@_3, TrUserData) ->
-    Key = X bsl N + Acc,
-    case Key of
-      8 ->
-	  d_field_ApbNodesReadyResp_success(Rest, 0, 0, F@_1,
-					    F@_2, F@_3, TrUserData);
-      18 ->
-	  d_field_ApbNodesReadyResp_status(Rest, 0, 0, F@_1, F@_2,
-					   F@_3, TrUserData);
-      24 ->
-	  d_field_ApbNodesReadyResp_errorcode(Rest, 0, 0, F@_1,
-					      F@_2, F@_3, TrUserData);
-      _ ->
-	  case Key band 7 of
-	    0 ->
-		skip_varint_ApbNodesReadyResp(Rest, 0, 0, F@_1, F@_2,
-					      F@_3, TrUserData);
-	    1 ->
-		skip_64_ApbNodesReadyResp(Rest, 0, 0, F@_1, F@_2, F@_3,
-					  TrUserData);
-	    2 ->
-		skip_length_delimited_ApbNodesReadyResp(Rest, 0, 0,
-							F@_1, F@_2, F@_3,
-							TrUserData);
-	    3 ->
-		skip_group_ApbNodesReadyResp(Rest, Key bsr 3, 0, F@_1,
-					     F@_2, F@_3, TrUserData);
-	    5 ->
-		skip_32_ApbNodesReadyResp(Rest, 0, 0, F@_1, F@_2, F@_3,
-					  TrUserData)
-	  end
-    end;
-dg_read_field_def_ApbNodesReadyResp(<<>>, 0, 0, F@_1,
-				    R1, F@_3, TrUserData) ->
-    #'ApbNodesReadyResp'{success = F@_1,
-			 status = lists_reverse(R1, TrUserData),
-			 errorcode = F@_3}.
-
-d_field_ApbNodesReadyResp_success(<<1:1, X:7,
-				    Rest/binary>>,
-				  N, Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 57 ->
-    d_field_ApbNodesReadyResp_success(Rest, N + 7,
-				      X bsl N + Acc, F@_1, F@_2, F@_3,
-				      TrUserData);
-d_field_ApbNodesReadyResp_success(<<0:1, X:7,
-				    Rest/binary>>,
-				  N, Acc, _, F@_2, F@_3, TrUserData) ->
-    {NewFValue, RestF} = {id(X bsl N + Acc =/= 0,
-			     TrUserData),
-			  Rest},
-    dfp_read_field_def_ApbNodesReadyResp(RestF, 0, 0,
-					 NewFValue, F@_2, F@_3, TrUserData).
-
-d_field_ApbNodesReadyResp_status(<<1:1, X:7,
-				   Rest/binary>>,
-				 N, Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 57 ->
-    d_field_ApbNodesReadyResp_status(Rest, N + 7,
-				     X bsl N + Acc, F@_1, F@_2, F@_3,
-				     TrUserData);
-d_field_ApbNodesReadyResp_status(<<0:1, X:7,
-				   Rest/binary>>,
-				 N, Acc, F@_1, Prev, F@_3, TrUserData) ->
-    {NewFValue, RestF} = begin
-			   Len = X bsl N + Acc,
-			   <<Bs:Len/binary, Rest2/binary>> = Rest,
-			   {id(decode_msg_ApbNodeStatus(Bs, TrUserData),
-			       TrUserData),
-			    Rest2}
-			 end,
-    dfp_read_field_def_ApbNodesReadyResp(RestF, 0, 0, F@_1,
-					 cons(NewFValue, Prev, TrUserData),
-					 F@_3, TrUserData).
-
-d_field_ApbNodesReadyResp_errorcode(<<1:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 57 ->
-    d_field_ApbNodesReadyResp_errorcode(Rest, N + 7,
-					X bsl N + Acc, F@_1, F@_2, F@_3,
-					TrUserData);
-d_field_ApbNodesReadyResp_errorcode(<<0:1, X:7,
-				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, _, TrUserData) ->
-    {NewFValue, RestF} = {id(X bsl N + Acc, TrUserData),
-			  Rest},
-    dfp_read_field_def_ApbNodesReadyResp(RestF, 0, 0, F@_1,
-					 F@_2, NewFValue, TrUserData).
-
-skip_varint_ApbNodesReadyResp(<<1:1, _:7, Rest/binary>>,
-			      Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
-    skip_varint_ApbNodesReadyResp(Rest, Z1, Z2, F@_1, F@_2,
-				  F@_3, TrUserData);
-skip_varint_ApbNodesReadyResp(<<0:1, _:7, Rest/binary>>,
-			      Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
-    dfp_read_field_def_ApbNodesReadyResp(Rest, Z1, Z2, F@_1,
-					 F@_2, F@_3, TrUserData).
-
-skip_length_delimited_ApbNodesReadyResp(<<1:1, X:7,
-					  Rest/binary>>,
-					N, Acc, F@_1, F@_2, F@_3, TrUserData)
-    when N < 57 ->
-    skip_length_delimited_ApbNodesReadyResp(Rest, N + 7,
-					    X bsl N + Acc, F@_1, F@_2, F@_3,
-					    TrUserData);
-skip_length_delimited_ApbNodesReadyResp(<<0:1, X:7,
-					  Rest/binary>>,
-					N, Acc, F@_1, F@_2, F@_3, TrUserData) ->
-    Length = X bsl N + Acc,
-    <<_:Length/binary, Rest2/binary>> = Rest,
-    dfp_read_field_def_ApbNodesReadyResp(Rest2, 0, 0, F@_1,
-					 F@_2, F@_3, TrUserData).
-
-skip_group_ApbNodesReadyResp(Bin, FNum, Z2, F@_1, F@_2,
-			     F@_3, TrUserData) ->
-    {_, Rest} = read_group(Bin, FNum),
-    dfp_read_field_def_ApbNodesReadyResp(Rest, 0, Z2, F@_1,
-					 F@_2, F@_3, TrUserData).
-
-skip_32_ApbNodesReadyResp(<<_:32, Rest/binary>>, Z1, Z2,
-			  F@_1, F@_2, F@_3, TrUserData) ->
-    dfp_read_field_def_ApbNodesReadyResp(Rest, Z1, Z2, F@_1,
-					 F@_2, F@_3, TrUserData).
-
-skip_64_ApbNodesReadyResp(<<_:64, Rest/binary>>, Z1, Z2,
-			  F@_1, F@_2, F@_3, TrUserData) ->
-    dfp_read_field_def_ApbNodesReadyResp(Rest, Z1, Z2, F@_1,
-					 F@_2, F@_3, TrUserData).
-
 d_enum_CRDT_type(3) -> 'COUNTER';
 d_enum_CRDT_type(4) -> 'ORSET';
 d_enum_CRDT_type(5) -> 'LWWREG';
@@ -7912,13 +7401,7 @@ merge_msgs(Prev, New, MsgName, Opts) ->
       'ApbConnectToDCs' ->
 	  merge_msg_ApbConnectToDCs(Prev, New, TrUserData);
       'ApbConnectToDCsResp' ->
-	  merge_msg_ApbConnectToDCsResp(Prev, New, TrUserData);
-      'ApbNodesReady' ->
-	  merge_msg_ApbNodesReady(Prev, New, TrUserData);
-      'ApbNodeStatus' ->
-	  merge_msg_ApbNodeStatus(Prev, New, TrUserData);
-      'ApbNodesReadyResp' ->
-	  merge_msg_ApbNodesReadyResp(Prev, New, TrUserData)
+	  merge_msg_ApbConnectToDCsResp(Prev, New, TrUserData)
     end.
 
 -compile({nowarn_unused_function,merge_msg_ApbErrorResp/3}).
@@ -8514,42 +7997,6 @@ merge_msg_ApbConnectToDCsResp(#'ApbConnectToDCsResp'{errorcode
 				  true -> NFerrorcode
 			       end}.
 
--compile({nowarn_unused_function,merge_msg_ApbNodesReady/3}).
-merge_msg_ApbNodesReady(#'ApbNodesReady'{nodes =
-					     PFnodes},
-			#'ApbNodesReady'{nodes = NFnodes}, TrUserData) ->
-    #'ApbNodesReady'{nodes =
-			 if PFnodes /= undefined, NFnodes /= undefined ->
-				'erlang_++'(PFnodes, NFnodes, TrUserData);
-			    PFnodes == undefined -> NFnodes;
-			    NFnodes == undefined -> PFnodes
-			 end}.
-
--compile({nowarn_unused_function,merge_msg_ApbNodeStatus/3}).
-merge_msg_ApbNodeStatus(#'ApbNodeStatus'{},
-			#'ApbNodeStatus'{node = NFnode, ready = NFready}, _) ->
-    #'ApbNodeStatus'{node = NFnode, ready = NFready}.
-
--compile({nowarn_unused_function,merge_msg_ApbNodesReadyResp/3}).
-merge_msg_ApbNodesReadyResp(#'ApbNodesReadyResp'{status
-						     = PFstatus,
-						 errorcode = PFerrorcode},
-			    #'ApbNodesReadyResp'{success = NFsuccess,
-						 status = NFstatus,
-						 errorcode = NFerrorcode},
-			    TrUserData) ->
-    #'ApbNodesReadyResp'{success = NFsuccess,
-			 status =
-			     if PFstatus /= undefined, NFstatus /= undefined ->
-				    'erlang_++'(PFstatus, NFstatus, TrUserData);
-				PFstatus == undefined -> NFstatus;
-				NFstatus == undefined -> PFstatus
-			     end,
-			 errorcode =
-			     if NFerrorcode =:= undefined -> PFerrorcode;
-				true -> NFerrorcode
-			     end}.
-
 
 verify_msg(Msg) when tuple_size(Msg) >= 1 ->
     verify_msg(Msg, element(1, Msg), []);
@@ -8649,12 +8096,6 @@ verify_msg(Msg, MsgName, Opts) ->
 	  v_msg_ApbConnectToDCs(Msg, [MsgName], TrUserData);
       'ApbConnectToDCsResp' ->
 	  v_msg_ApbConnectToDCsResp(Msg, [MsgName], TrUserData);
-      'ApbNodesReady' ->
-	  v_msg_ApbNodesReady(Msg, [MsgName], TrUserData);
-      'ApbNodeStatus' ->
-	  v_msg_ApbNodeStatus(Msg, [MsgName], TrUserData);
-      'ApbNodesReadyResp' ->
-	  v_msg_ApbNodesReadyResp(Msg, [MsgName], TrUserData);
       _ -> mk_type_error(not_a_known_message, Msg, [])
     end.
 
@@ -9321,58 +8762,6 @@ v_msg_ApbConnectToDCsResp(X, Path, _TrUserData) ->
     mk_type_error({expected_msg, 'ApbConnectToDCsResp'}, X,
 		  Path).
 
--compile({nowarn_unused_function,v_msg_ApbNodesReady/3}).
--dialyzer({nowarn_function,v_msg_ApbNodesReady/3}).
-v_msg_ApbNodesReady(#'ApbNodesReady'{nodes = F1}, Path,
-		    TrUserData) ->
-    if is_list(F1) ->
-	   _ = [v_type_string(Elem, [nodes | Path], TrUserData)
-		|| Elem <- F1],
-	   ok;
-       true ->
-	   mk_type_error({invalid_list_of, string}, F1,
-			 [nodes | Path])
-    end,
-    ok;
-v_msg_ApbNodesReady(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, 'ApbNodesReady'}, X, Path).
-
--compile({nowarn_unused_function,v_msg_ApbNodeStatus/3}).
--dialyzer({nowarn_function,v_msg_ApbNodeStatus/3}).
-v_msg_ApbNodeStatus(#'ApbNodeStatus'{node = F1,
-				     ready = F2},
-		    Path, TrUserData) ->
-    v_type_string(F1, [node | Path], TrUserData),
-    v_type_bool(F2, [ready | Path], TrUserData),
-    ok;
-v_msg_ApbNodeStatus(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, 'ApbNodeStatus'}, X, Path).
-
--compile({nowarn_unused_function,v_msg_ApbNodesReadyResp/3}).
--dialyzer({nowarn_function,v_msg_ApbNodesReadyResp/3}).
-v_msg_ApbNodesReadyResp(#'ApbNodesReadyResp'{success =
-						 F1,
-					     status = F2, errorcode = F3},
-			Path, TrUserData) ->
-    v_type_bool(F1, [success | Path], TrUserData),
-    if is_list(F2) ->
-	   _ = [v_msg_ApbNodeStatus(Elem, [status | Path],
-				    TrUserData)
-		|| Elem <- F2],
-	   ok;
-       true ->
-	   mk_type_error({invalid_list_of, {msg, 'ApbNodeStatus'}},
-			 F2, [status | Path])
-    end,
-    if F3 == undefined -> ok;
-       true ->
-	   v_type_uint32(F3, [errorcode | Path], TrUserData)
-    end,
-    ok;
-v_msg_ApbNodesReadyResp(X, Path, _TrUserData) ->
-    mk_type_error({expected_msg, 'ApbNodesReadyResp'}, X,
-		  Path).
-
 -compile({nowarn_unused_function,v_enum_CRDT_type/3}).
 -dialyzer({nowarn_function,v_enum_CRDT_type/3}).
 v_enum_CRDT_type('COUNTER', _Path, _TrUserData) -> ok;
@@ -9757,22 +9146,6 @@ get_msg_defs() ->
       [#field{name = success, fnum = 1, rnum = 2, type = bool,
 	      occurrence = required, opts = []},
        #field{name = errorcode, fnum = 2, rnum = 3,
-	      type = uint32, occurrence = optional, opts = []}]},
-     {{msg, 'ApbNodesReady'},
-      [#field{name = nodes, fnum = 1, rnum = 2, type = string,
-	      occurrence = repeated, opts = []}]},
-     {{msg, 'ApbNodeStatus'},
-      [#field{name = node, fnum = 1, rnum = 2, type = string,
-	      occurrence = required, opts = []},
-       #field{name = ready, fnum = 2, rnum = 3, type = bool,
-	      occurrence = required, opts = []}]},
-     {{msg, 'ApbNodesReadyResp'},
-      [#field{name = success, fnum = 1, rnum = 2, type = bool,
-	      occurrence = required, opts = []},
-       #field{name = status, fnum = 2, rnum = 3,
-	      type = {msg, 'ApbNodeStatus'}, occurrence = repeated,
-	      opts = []},
-       #field{name = errorcode, fnum = 3, rnum = 4,
 	      type = uint32, occurrence = optional, opts = []}]}].
 
 
@@ -9793,8 +9166,7 @@ get_msg_names() ->
      'ApbCreateDC', 'ApbCreateDCResp',
      'ApbGetConnectionDescriptor',
      'ApbGetConnectionDescriptorResp', 'ApbConnectToDCs',
-     'ApbConnectToDCsResp', 'ApbNodesReady', 'ApbNodeStatus',
-     'ApbNodesReadyResp'].
+     'ApbConnectToDCsResp'].
 
 
 get_group_names() -> [].
@@ -9817,8 +9189,7 @@ get_msg_or_group_names() ->
      'ApbCreateDC', 'ApbCreateDCResp',
      'ApbGetConnectionDescriptor',
      'ApbGetConnectionDescriptorResp', 'ApbConnectToDCs',
-     'ApbConnectToDCsResp', 'ApbNodesReady', 'ApbNodeStatus',
-     'ApbNodesReadyResp'].
+     'ApbConnectToDCsResp'].
 
 
 get_enum_names() ->
@@ -10066,22 +9437,6 @@ find_msg_def('ApbConnectToDCsResp') ->
     [#field{name = success, fnum = 1, rnum = 2, type = bool,
 	    occurrence = required, opts = []},
      #field{name = errorcode, fnum = 2, rnum = 3,
-	    type = uint32, occurrence = optional, opts = []}];
-find_msg_def('ApbNodesReady') ->
-    [#field{name = nodes, fnum = 1, rnum = 2, type = string,
-	    occurrence = repeated, opts = []}];
-find_msg_def('ApbNodeStatus') ->
-    [#field{name = node, fnum = 1, rnum = 2, type = string,
-	    occurrence = required, opts = []},
-     #field{name = ready, fnum = 2, rnum = 3, type = bool,
-	    occurrence = required, opts = []}];
-find_msg_def('ApbNodesReadyResp') ->
-    [#field{name = success, fnum = 1, rnum = 2, type = bool,
-	    occurrence = required, opts = []},
-     #field{name = status, fnum = 2, rnum = 3,
-	    type = {msg, 'ApbNodeStatus'}, occurrence = repeated,
-	    opts = []},
-     #field{name = errorcode, fnum = 3, rnum = 4,
 	    type = uint32, occurrence = optional, opts = []}];
 find_msg_def(_) -> error.
 

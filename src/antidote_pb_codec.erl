@@ -64,8 +64,7 @@
 | {read_objects, Objects :: [bound_object()], TxId :: binary()}
 | {create_dc, NodeNames :: [node()]}
 | get_connection_descriptor
-| {connect_to_dcs, Descriptors :: [binary()]}
-| {nodes_ready, NodeNames :: [node()]}.
+| {connect_to_dcs, Descriptors :: [binary()]}.
 
 -type response() ::
   {error_response, {ErrorCode :: error_code(), Message :: binary()}}
@@ -76,8 +75,7 @@
 | {operation_response, ok | {error, Reason :: error_code()}}
 | {create_dc_response, ok | {error, Reason :: error_code()}}
 | {get_connection_descriptor_response, {ok, Descriptor :: binary()} | {error, Reason :: error_code()}}
-| {connect_to_dcs_response, ok | {error, Reason :: error_code()}}
-| {nodes_ready_response, {ok, [NodeStatus :: {node(), boolean()}]} | {error, Reason :: error_code()}}.
+| {connect_to_dcs_response, ok | {error, Reason :: error_code()}}.
 
 -type sendable() ::
   #'ApbErrorResp'{}
@@ -99,8 +97,6 @@
 | #'ApbGetConnectionDescriptorResp'{}
 | #'ApbConnectToDCs'{}
 | #'ApbConnectToDCsResp'{}
-| #'ApbNodesReady'{}
-| #'ApbNodesReadyResp'{}
 .
 
 -define(ASSERT_BINARY(X), case is_binary(X) of true -> ok; false -> throw({not_binary, X}) end).
@@ -163,11 +159,7 @@ message_type_to_code('ApbCreateDCResp')                -> 130;
 message_type_to_code('ApbConnectToDCs')                -> 131;
 message_type_to_code('ApbConnectToDCsResp')            -> 132;
 message_type_to_code('ApbGetConnectionDescriptor')     -> 133;
-message_type_to_code('ApbGetConnectionDescriptorResp') -> 134;
-message_type_to_code('ApbNodesReady')                  -> 135;
-message_type_to_code('ApbNodesReadyResp')              -> 136;
-message_type_to_code('ApbNodeStatus')                  -> 137
-.
+message_type_to_code('ApbGetConnectionDescriptorResp') -> 134.
 
 message_code_to_type(0)   -> 'ApbErrorResp';
 message_code_to_type(107) -> 'ApbRegUpdate';
@@ -197,11 +189,7 @@ message_code_to_type(130) -> 'ApbCreateDCResp';
 message_code_to_type(131) -> 'ApbConnectToDCs';
 message_code_to_type(132) -> 'ApbConnectToDCsResp';
 message_code_to_type(133) -> 'ApbGetConnectionDescriptor';
-message_code_to_type(134) -> 'ApbGetConnectionDescriptorResp';
-message_code_to_type(135) -> 'ApbNodesReady';
-message_code_to_type(136) -> 'ApbNodesReadyResp';
-message_code_to_type(137) -> 'ApbNodeStatus'
-.
+message_code_to_type(134) -> 'ApbGetConnectionDescriptorResp'.
 
 -spec encode(message()) -> iolist().
 encode(Msg) ->
@@ -261,12 +249,7 @@ encode_message({create_dc_response, Resp}) ->
 encode_message({connect_to_dcs, Descriptors}) ->
   encode_connect_to_dcs(Descriptors);
 encode_message({connect_to_dcs_response, Descriptors}) ->
-  encode_connect_to_dcs_response(Descriptors);
-encode_message({nodes_ready, Nodes}) ->
-  encode_nodes_ready(Nodes);
-encode_message({nodes_ready_response, Resp}) ->
-  encode_nodes_ready_response(Resp)
-.
+  encode_connect_to_dcs_response(Descriptors).
 
 -spec decode_message(sendable()) -> message().
 decode_message(#'ApbStartTransaction'{properties = Properties, timestamp = Clock}) ->
@@ -306,13 +289,6 @@ decode_message(#'ApbConnectToDCsResp'{success = false, errorcode = E}) ->
   {connect_to_dcs_response, {error, decode_error_code(E)}};
 decode_message(#'ApbConnectToDCsResp'{success = true, errorcode = _E}) ->
   {connect_to_dcs_response, ok};
-decode_message(#'ApbNodesReady'{nodes = Nodes}) ->
-  {nodes_ready, [binary_to_atom(N, utf8) || N <- Nodes]};
-decode_message(#'ApbNodesReadyResp'{success = true, status = Status}) ->
-  {nodes_ready_response, {ok, [decode_node_status(S) || S <- Status]}};
-decode_message(#'ApbNodesReadyResp'{success = false, errorcode = E}) ->
-  {nodes_ready_response, {error, decode_error_code(E)}};
-
 
 decode_message(#'ApbErrorResp'{errcode = ErrorCode, errmsg = Message}) ->
   {error_response, {decode_error_code(ErrorCode), Message}};
@@ -815,31 +791,6 @@ encode_connect_to_dcs_response(ok) ->
         success = true
     }.
 
-encode_nodes_ready(Nodes) ->
-    #'ApbNodesReady'{nodes = [encode_node(N) || N <- Nodes]}.
-
-encode_nodes_ready_response({error, Reason}) ->
-    #'ApbNodesReadyResp'{
-        success = false,
-        errorcode = encode_error_code(Reason)
-    };
-encode_nodes_ready_response({ok, Result}) ->
-    #'ApbNodesReadyResp'{
-        success = true,
-        status = lists:map(fun(Object) ->
-          encode_node_status(Object) end,
-    Result)
-    }.
-
-encode_node_status({Node, Status}) ->
-  #'ApbNodeStatus'{
-    node = encode_node(Node),
-    ready = Status
-  }.
-
-decode_node_status(#'ApbNodeStatus'{node = Node, ready = Status}) ->
-    {binary_to_atom(Node, utf8), Status}.
-
 -ifdef(TEST).
 
 check_response(Input, Output) ->
@@ -940,7 +891,6 @@ error_messages_test() ->
   check_response({read_objects_response, {error, unknown}}),
   check_response({get_connection_descriptor_response, {error, unknown}}),
   check_response({create_dc_response, {error, unknown}}),
-  check_response({nodes_ready_response, {error, unknown}}),
   check_response({connect_to_dcs_response, {error, unknown}}),
   check_response({error_response, {unknown, <<"Message">>}}),
   check_response({error_response, {timeout, <<"Message">>}}),
@@ -952,9 +902,6 @@ dc_management_test() ->
   Nodes = [antidote@host1, antidote@host2],
   check_request({create_dc, Nodes}),
   check_response({create_dc_response, ok}),
-
-  check_request({nodes_ready, Nodes}),
-  check_response({nodes_ready_response, {ok, lists:zip(Nodes, [true, false])}}),
 
   check_request(get_connection_descriptor),
   Descriptor = <<"some_opaque_binary_descriptor">>,
