@@ -519,7 +519,9 @@ encode_msg_ApbTxnProperties(Msg, TrUserData) ->
 
 encode_msg_ApbTxnProperties(#'ApbTxnProperties'{read_write
 						    = F1,
-						red_blue = F2},
+						red_blue = F2,
+						shared_locks = F3,
+						exclusive_locks = F4},
 			    Bin, TrUserData) ->
     B1 = if F1 == undefined -> Bin;
 	    true ->
@@ -528,12 +530,28 @@ encode_msg_ApbTxnProperties(#'ApbTxnProperties'{read_write
 		  e_varint(TrF1, <<Bin/binary, 8>>, TrUserData)
 		end
 	 end,
-    if F2 == undefined -> B1;
-       true ->
-	   begin
-	     TrF2 = id(F2, TrUserData),
-	     e_varint(TrF2, <<B1/binary, 16>>, TrUserData)
+    B2 = if F2 == undefined -> B1;
+	    true ->
+		begin
+		  TrF2 = id(F2, TrUserData),
+		  e_varint(TrF2, <<B1/binary, 16>>, TrUserData)
+		end
+	 end,
+    B3 = begin
+	   TrF3 = id(F3, TrUserData),
+	   if TrF3 == [] -> B2;
+	      true ->
+		  e_field_ApbTxnProperties_shared_locks(TrF3, B2,
+							TrUserData)
 	   end
+	 end,
+    begin
+      TrF4 = id(F4, TrUserData),
+      if TrF4 == [] -> B3;
+	 true ->
+	     e_field_ApbTxnProperties_exclusive_locks(TrF4, B3,
+						      TrUserData)
+      end
     end.
 
 encode_msg_ApbBoundObject(Msg, TrUserData) ->
@@ -1116,6 +1134,28 @@ e_mfield_ApbMapEntry_value(Msg, Bin, TrUserData) ->
 					  TrUserData),
     Bin2 = e_varint(byte_size(SubBin), Bin),
     <<Bin2/binary, SubBin/binary>>.
+
+e_field_ApbTxnProperties_shared_locks([Elem | Rest],
+				      Bin, TrUserData) ->
+    Bin2 = <<Bin/binary, 26>>,
+    Bin3 = e_type_bytes(id(Elem, TrUserData), Bin2,
+			TrUserData),
+    e_field_ApbTxnProperties_shared_locks(Rest, Bin3,
+					  TrUserData);
+e_field_ApbTxnProperties_shared_locks([], Bin,
+				      _TrUserData) ->
+    Bin.
+
+e_field_ApbTxnProperties_exclusive_locks([Elem | Rest],
+					 Bin, TrUserData) ->
+    Bin2 = <<Bin/binary, 34>>,
+    Bin3 = e_type_bytes(id(Elem, TrUserData), Bin2,
+			TrUserData),
+    e_field_ApbTxnProperties_exclusive_locks(Rest, Bin3,
+					     TrUserData);
+e_field_ApbTxnProperties_exclusive_locks([], Bin,
+					 _TrUserData) ->
+    Bin.
 
 e_mfield_ApbReadObjects_boundobjects(Msg, Bin,
 				     TrUserData) ->
@@ -3630,131 +3670,208 @@ skip_64_ApbOperationResp(<<_:64, Rest/binary>>, Z1, Z2,
 decode_msg_ApbTxnProperties(Bin, TrUserData) ->
     dfp_read_field_def_ApbTxnProperties(Bin, 0, 0,
 					id(undefined, TrUserData),
-					id(undefined, TrUserData), TrUserData).
+					id(undefined, TrUserData),
+					id([], TrUserData), id([], TrUserData),
+					TrUserData).
 
 dfp_read_field_def_ApbTxnProperties(<<8, Rest/binary>>,
-				    Z1, Z2, F@_1, F@_2, TrUserData) ->
+				    Z1, Z2, F@_1, F@_2, F@_3, F@_4,
+				    TrUserData) ->
     d_field_ApbTxnProperties_read_write(Rest, Z1, Z2, F@_1,
-					F@_2, TrUserData);
+					F@_2, F@_3, F@_4, TrUserData);
 dfp_read_field_def_ApbTxnProperties(<<16, Rest/binary>>,
-				    Z1, Z2, F@_1, F@_2, TrUserData) ->
+				    Z1, Z2, F@_1, F@_2, F@_3, F@_4,
+				    TrUserData) ->
     d_field_ApbTxnProperties_red_blue(Rest, Z1, Z2, F@_1,
-				      F@_2, TrUserData);
+				      F@_2, F@_3, F@_4, TrUserData);
+dfp_read_field_def_ApbTxnProperties(<<26, Rest/binary>>,
+				    Z1, Z2, F@_1, F@_2, F@_3, F@_4,
+				    TrUserData) ->
+    d_field_ApbTxnProperties_shared_locks(Rest, Z1, Z2,
+					  F@_1, F@_2, F@_3, F@_4, TrUserData);
+dfp_read_field_def_ApbTxnProperties(<<34, Rest/binary>>,
+				    Z1, Z2, F@_1, F@_2, F@_3, F@_4,
+				    TrUserData) ->
+    d_field_ApbTxnProperties_exclusive_locks(Rest, Z1, Z2,
+					     F@_1, F@_2, F@_3, F@_4,
+					     TrUserData);
 dfp_read_field_def_ApbTxnProperties(<<>>, 0, 0, F@_1,
-				    F@_2, _) ->
-    #'ApbTxnProperties'{read_write = F@_1, red_blue = F@_2};
+				    F@_2, R1, R2, TrUserData) ->
+    #'ApbTxnProperties'{read_write = F@_1, red_blue = F@_2,
+			shared_locks = lists_reverse(R1, TrUserData),
+			exclusive_locks = lists_reverse(R2, TrUserData)};
 dfp_read_field_def_ApbTxnProperties(Other, Z1, Z2, F@_1,
-				    F@_2, TrUserData) ->
+				    F@_2, F@_3, F@_4, TrUserData) ->
     dg_read_field_def_ApbTxnProperties(Other, Z1, Z2, F@_1,
-				       F@_2, TrUserData).
+				       F@_2, F@_3, F@_4, TrUserData).
 
 dg_read_field_def_ApbTxnProperties(<<1:1, X:7,
 				     Rest/binary>>,
-				   N, Acc, F@_1, F@_2, TrUserData)
+				   N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 32 - 7 ->
     dg_read_field_def_ApbTxnProperties(Rest, N + 7,
-				       X bsl N + Acc, F@_1, F@_2, TrUserData);
+				       X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
+				       TrUserData);
 dg_read_field_def_ApbTxnProperties(<<0:1, X:7,
 				     Rest/binary>>,
-				   N, Acc, F@_1, F@_2, TrUserData) ->
+				   N, Acc, F@_1, F@_2, F@_3, F@_4,
+				   TrUserData) ->
     Key = X bsl N + Acc,
     case Key of
       8 ->
 	  d_field_ApbTxnProperties_read_write(Rest, 0, 0, F@_1,
-					      F@_2, TrUserData);
+					      F@_2, F@_3, F@_4, TrUserData);
       16 ->
 	  d_field_ApbTxnProperties_red_blue(Rest, 0, 0, F@_1,
-					    F@_2, TrUserData);
+					    F@_2, F@_3, F@_4, TrUserData);
+      26 ->
+	  d_field_ApbTxnProperties_shared_locks(Rest, 0, 0, F@_1,
+						F@_2, F@_3, F@_4, TrUserData);
+      34 ->
+	  d_field_ApbTxnProperties_exclusive_locks(Rest, 0, 0,
+						   F@_1, F@_2, F@_3, F@_4,
+						   TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 ->
 		skip_varint_ApbTxnProperties(Rest, 0, 0, F@_1, F@_2,
-					     TrUserData);
+					     F@_3, F@_4, TrUserData);
 	    1 ->
-		skip_64_ApbTxnProperties(Rest, 0, 0, F@_1, F@_2,
-					 TrUserData);
+		skip_64_ApbTxnProperties(Rest, 0, 0, F@_1, F@_2, F@_3,
+					 F@_4, TrUserData);
 	    2 ->
 		skip_length_delimited_ApbTxnProperties(Rest, 0, 0, F@_1,
-						       F@_2, TrUserData);
+						       F@_2, F@_3, F@_4,
+						       TrUserData);
 	    3 ->
 		skip_group_ApbTxnProperties(Rest, Key bsr 3, 0, F@_1,
-					    F@_2, TrUserData);
+					    F@_2, F@_3, F@_4, TrUserData);
 	    5 ->
-		skip_32_ApbTxnProperties(Rest, 0, 0, F@_1, F@_2,
-					 TrUserData)
+		skip_32_ApbTxnProperties(Rest, 0, 0, F@_1, F@_2, F@_3,
+					 F@_4, TrUserData)
 	  end
     end;
 dg_read_field_def_ApbTxnProperties(<<>>, 0, 0, F@_1,
-				   F@_2, _) ->
-    #'ApbTxnProperties'{read_write = F@_1, red_blue = F@_2}.
+				   F@_2, R1, R2, TrUserData) ->
+    #'ApbTxnProperties'{read_write = F@_1, red_blue = F@_2,
+			shared_locks = lists_reverse(R1, TrUserData),
+			exclusive_locks = lists_reverse(R2, TrUserData)}.
 
 d_field_ApbTxnProperties_read_write(<<1:1, X:7,
 				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, TrUserData)
+				    N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 57 ->
     d_field_ApbTxnProperties_read_write(Rest, N + 7,
-					X bsl N + Acc, F@_1, F@_2, TrUserData);
+					X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
+					TrUserData);
 d_field_ApbTxnProperties_read_write(<<0:1, X:7,
 				      Rest/binary>>,
-				    N, Acc, _, F@_2, TrUserData) ->
+				    N, Acc, _, F@_2, F@_3, F@_4, TrUserData) ->
     {NewFValue, RestF} = {id(X bsl N + Acc, TrUserData),
 			  Rest},
     dfp_read_field_def_ApbTxnProperties(RestF, 0, 0,
-					NewFValue, F@_2, TrUserData).
+					NewFValue, F@_2, F@_3, F@_4,
+					TrUserData).
 
 d_field_ApbTxnProperties_red_blue(<<1:1, X:7,
 				    Rest/binary>>,
-				  N, Acc, F@_1, F@_2, TrUserData)
+				  N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 57 ->
     d_field_ApbTxnProperties_red_blue(Rest, N + 7,
-				      X bsl N + Acc, F@_1, F@_2, TrUserData);
+				      X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
+				      TrUserData);
 d_field_ApbTxnProperties_red_blue(<<0:1, X:7,
 				    Rest/binary>>,
-				  N, Acc, F@_1, _, TrUserData) ->
+				  N, Acc, F@_1, _, F@_3, F@_4, TrUserData) ->
     {NewFValue, RestF} = {id(X bsl N + Acc, TrUserData),
 			  Rest},
     dfp_read_field_def_ApbTxnProperties(RestF, 0, 0, F@_1,
-					NewFValue, TrUserData).
+					NewFValue, F@_3, F@_4, TrUserData).
+
+d_field_ApbTxnProperties_shared_locks(<<1:1, X:7,
+					Rest/binary>>,
+				      N, Acc, F@_1, F@_2, F@_3, F@_4,
+				      TrUserData)
+    when N < 57 ->
+    d_field_ApbTxnProperties_shared_locks(Rest, N + 7,
+					  X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
+					  TrUserData);
+d_field_ApbTxnProperties_shared_locks(<<0:1, X:7,
+					Rest/binary>>,
+				      N, Acc, F@_1, F@_2, Prev, F@_4,
+				      TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
+			   {id(binary:copy(Bytes), TrUserData), Rest2}
+			 end,
+    dfp_read_field_def_ApbTxnProperties(RestF, 0, 0, F@_1,
+					F@_2, cons(NewFValue, Prev, TrUserData),
+					F@_4, TrUserData).
+
+d_field_ApbTxnProperties_exclusive_locks(<<1:1, X:7,
+					   Rest/binary>>,
+					 N, Acc, F@_1, F@_2, F@_3, F@_4,
+					 TrUserData)
+    when N < 57 ->
+    d_field_ApbTxnProperties_exclusive_locks(Rest, N + 7,
+					     X bsl N + Acc, F@_1, F@_2, F@_3,
+					     F@_4, TrUserData);
+d_field_ApbTxnProperties_exclusive_locks(<<0:1, X:7,
+					   Rest/binary>>,
+					 N, Acc, F@_1, F@_2, F@_3, Prev,
+					 TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
+			   {id(binary:copy(Bytes), TrUserData), Rest2}
+			 end,
+    dfp_read_field_def_ApbTxnProperties(RestF, 0, 0, F@_1,
+					F@_2, F@_3,
+					cons(NewFValue, Prev, TrUserData),
+					TrUserData).
 
 skip_varint_ApbTxnProperties(<<1:1, _:7, Rest/binary>>,
-			     Z1, Z2, F@_1, F@_2, TrUserData) ->
+			     Z1, Z2, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     skip_varint_ApbTxnProperties(Rest, Z1, Z2, F@_1, F@_2,
-				 TrUserData);
+				 F@_3, F@_4, TrUserData);
 skip_varint_ApbTxnProperties(<<0:1, _:7, Rest/binary>>,
-			     Z1, Z2, F@_1, F@_2, TrUserData) ->
+			     Z1, Z2, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_ApbTxnProperties(Rest, Z1, Z2, F@_1,
-					F@_2, TrUserData).
+					F@_2, F@_3, F@_4, TrUserData).
 
 skip_length_delimited_ApbTxnProperties(<<1:1, X:7,
 					 Rest/binary>>,
-				       N, Acc, F@_1, F@_2, TrUserData)
+				       N, Acc, F@_1, F@_2, F@_3, F@_4,
+				       TrUserData)
     when N < 57 ->
     skip_length_delimited_ApbTxnProperties(Rest, N + 7,
-					   X bsl N + Acc, F@_1, F@_2,
-					   TrUserData);
+					   X bsl N + Acc, F@_1, F@_2, F@_3,
+					   F@_4, TrUserData);
 skip_length_delimited_ApbTxnProperties(<<0:1, X:7,
 					 Rest/binary>>,
-				       N, Acc, F@_1, F@_2, TrUserData) ->
+				       N, Acc, F@_1, F@_2, F@_3, F@_4,
+				       TrUserData) ->
     Length = X bsl N + Acc,
     <<_:Length/binary, Rest2/binary>> = Rest,
     dfp_read_field_def_ApbTxnProperties(Rest2, 0, 0, F@_1,
-					F@_2, TrUserData).
+					F@_2, F@_3, F@_4, TrUserData).
 
 skip_group_ApbTxnProperties(Bin, FNum, Z2, F@_1, F@_2,
-			    TrUserData) ->
+			    F@_3, F@_4, TrUserData) ->
     {_, Rest} = read_group(Bin, FNum),
     dfp_read_field_def_ApbTxnProperties(Rest, 0, Z2, F@_1,
-					F@_2, TrUserData).
+					F@_2, F@_3, F@_4, TrUserData).
 
 skip_32_ApbTxnProperties(<<_:32, Rest/binary>>, Z1, Z2,
-			 F@_1, F@_2, TrUserData) ->
+			 F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_ApbTxnProperties(Rest, Z1, Z2, F@_1,
-					F@_2, TrUserData).
+					F@_2, F@_3, F@_4, TrUserData).
 
 skip_64_ApbTxnProperties(<<_:64, Rest/binary>>, Z1, Z2,
-			 F@_1, F@_2, TrUserData) ->
+			 F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_ApbTxnProperties(Rest, Z1, Z2, F@_1,
-					F@_2, TrUserData).
+					F@_2, F@_3, F@_4, TrUserData).
 
 decode_msg_ApbBoundObject(Bin, TrUserData) ->
     dfp_read_field_def_ApbBoundObject(Bin, 0, 0,
@@ -7253,10 +7370,16 @@ merge_msg_ApbOperationResp(#'ApbOperationResp'{errorcode
 -compile({nowarn_unused_function,merge_msg_ApbTxnProperties/3}).
 merge_msg_ApbTxnProperties(#'ApbTxnProperties'{read_write
 						   = PFread_write,
-					       red_blue = PFred_blue},
+					       red_blue = PFred_blue,
+					       shared_locks = PFshared_locks,
+					       exclusive_locks =
+						   PFexclusive_locks},
 			   #'ApbTxnProperties'{read_write = NFread_write,
-					       red_blue = NFred_blue},
-			   _) ->
+					       red_blue = NFred_blue,
+					       shared_locks = NFshared_locks,
+					       exclusive_locks =
+						   NFexclusive_locks},
+			   TrUserData) ->
     #'ApbTxnProperties'{read_write =
 			    if NFread_write =:= undefined -> PFread_write;
 			       true -> NFread_write
@@ -7264,6 +7387,24 @@ merge_msg_ApbTxnProperties(#'ApbTxnProperties'{read_write
 			red_blue =
 			    if NFred_blue =:= undefined -> PFred_blue;
 			       true -> NFred_blue
+			    end,
+			shared_locks =
+			    if PFshared_locks /= undefined,
+			       NFshared_locks /= undefined ->
+				   'erlang_++'(PFshared_locks, NFshared_locks,
+					       TrUserData);
+			       PFshared_locks == undefined -> NFshared_locks;
+			       NFshared_locks == undefined -> PFshared_locks
+			    end,
+			exclusive_locks =
+			    if PFexclusive_locks /= undefined,
+			       NFexclusive_locks /= undefined ->
+				   'erlang_++'(PFexclusive_locks,
+					       NFexclusive_locks, TrUserData);
+			       PFexclusive_locks == undefined ->
+				   NFexclusive_locks;
+			       NFexclusive_locks == undefined ->
+				   PFexclusive_locks
 			    end}.
 
 -compile({nowarn_unused_function,merge_msg_ApbBoundObject/3}).
@@ -7988,7 +8129,8 @@ v_msg_ApbOperationResp(X, Path, _TrUserData) ->
 -dialyzer({nowarn_function,v_msg_ApbTxnProperties/3}).
 v_msg_ApbTxnProperties(#'ApbTxnProperties'{read_write =
 					       F1,
-					   red_blue = F2},
+					   red_blue = F2, shared_locks = F3,
+					   exclusive_locks = F4},
 		       Path, TrUserData) ->
     if F1 == undefined -> ok;
        true ->
@@ -7996,6 +8138,24 @@ v_msg_ApbTxnProperties(#'ApbTxnProperties'{read_write =
     end,
     if F2 == undefined -> ok;
        true -> v_type_uint32(F2, [red_blue | Path], TrUserData)
+    end,
+    if is_list(F3) ->
+	   _ = [v_type_bytes(Elem, [shared_locks | Path],
+			     TrUserData)
+		|| Elem <- F3],
+	   ok;
+       true ->
+	   mk_type_error({invalid_list_of, bytes}, F3,
+			 [shared_locks | Path])
+    end,
+    if is_list(F4) ->
+	   _ = [v_type_bytes(Elem, [exclusive_locks | Path],
+			     TrUserData)
+		|| Elem <- F4],
+	   ok;
+       true ->
+	   mk_type_error({invalid_list_of, bytes}, F4,
+			 [exclusive_locks | Path])
     end,
     ok;
 v_msg_ApbTxnProperties(X, Path, _TrUserData) ->
@@ -8626,7 +8786,11 @@ get_msg_defs() ->
       [#field{name = read_write, fnum = 1, rnum = 2,
 	      type = uint32, occurrence = optional, opts = []},
        #field{name = red_blue, fnum = 2, rnum = 3,
-	      type = uint32, occurrence = optional, opts = []}]},
+	      type = uint32, occurrence = optional, opts = []},
+       #field{name = shared_locks, fnum = 3, rnum = 4,
+	      type = bytes, occurrence = repeated, opts = []},
+       #field{name = exclusive_locks, fnum = 4, rnum = 5,
+	      type = bytes, occurrence = repeated, opts = []}]},
      {{msg, 'ApbBoundObject'},
       [#field{name = key, fnum = 1, rnum = 2, type = bytes,
 	      occurrence = required, opts = []},
@@ -8903,7 +9067,11 @@ find_msg_def('ApbTxnProperties') ->
     [#field{name = read_write, fnum = 1, rnum = 2,
 	    type = uint32, occurrence = optional, opts = []},
      #field{name = red_blue, fnum = 2, rnum = 3,
-	    type = uint32, occurrence = optional, opts = []}];
+	    type = uint32, occurrence = optional, opts = []},
+     #field{name = shared_locks, fnum = 3, rnum = 4,
+	    type = bytes, occurrence = repeated, opts = []},
+     #field{name = exclusive_locks, fnum = 4, rnum = 5,
+	    type = bytes, occurrence = repeated, opts = []}];
 find_msg_def('ApbBoundObject') ->
     [#field{name = key, fnum = 1, rnum = 2, type = bytes,
 	    occurrence = required, opts = []},
