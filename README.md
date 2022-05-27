@@ -1,3 +1,3 @@
-# Antidote Protocol Buffer codec
+# Archive of Antidote Protocol Buffer codec
 
-This project defines the protocol buffer interface of Antidote.
+Current version is included at https://github.com/AntidoteDB/antidote
